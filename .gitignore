@@ -1,0 +1,16 @@
+# kredensial — JANGAN pernah commit
+roblox_config.json
+roblox_tokens.json
+
+node_modules/
+package-lock.json.bak
+
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/schemas/
+src-tauri/dist/
+src-tauri/binaries/
+build-sidecar/
+
+__pycache__/
+*.pyc

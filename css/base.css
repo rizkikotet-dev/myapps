@@ -1,0 +1,143 @@
+/* ============================================================
+   base.css — token sistem desain, reset, kerangka halaman
+   Identitas: "instrumen studio" — panel navy-slate, amber hi-fi,
+   sian untuk sisi Roblox Studio. Angka & kode selalu Plex Mono.
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+:root{
+  /* permukaan */
+  --bg:#12151c;          /* halaman */
+  --bg1:#181c25;         /* kartu */
+  --bg2:#1e232e;         /* panel */
+  --bg3:#262c39;         /* inset / track */
+  --text:#e9edf5;
+  --text2:#9aa3b6;
+  --text3:#626b80;
+  --border:rgba(255,255,255,.07);
+  --border2:rgba(255,255,255,.14);
+
+  /* dua dunia: amber = aplikasi ini, sian = Roblox Studio */
+  --accent:#f2a33c;
+  --accent-hover:#ffb95c;
+  --on-accent:#211503;
+  --studio:#54c8de;
+  --studio-dim:rgba(84,200,222,.14);
+
+  /* semantik */
+  --blue-bg:rgba(111,168,245,.13);  --blue-text:#8ab8f7;
+  --green-bg:rgba(111,207,142,.13); --green-text:#7dd697;
+  --red-bg:rgba(242,112,112,.12);   --red-text:#f58f8f;
+  /* alias untuk inline-style dari js/main.js & js/files.js */
+  --green:var(--green-text); --red:var(--red-text); --orange:var(--accent);
+  --orange-text:#f2a33c;
+
+  --radius:10px; --radius-lg:16px;
+  --shadow-md:0 4px 14px rgba(0,0,0,.35);
+  --shadow-lg:0 18px 48px rgba(0,0,0,.5);
+
+  --font-display:'Oxanium',-apple-system,BlinkMacSystemFont,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,'Cascadia Code',Consolas,monospace;
+  --font-body:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+}
+@media (prefers-color-scheme:light){
+  :root{
+    --bg:#eef0f4; --bg1:#ffffff; --bg2:#f5f6f9; --bg3:#e8eaf0;
+    --text:#191f2e; --text2:#5a6376; --text3:#9aa1b2;
+    --border:rgba(20,28,48,.09); --border2:rgba(20,28,48,.17);
+    --accent:#c47610; --accent-hover:#a96308;
+    --on-accent:#fffaf2;
+    --studio:#0d7f96;
+    --studio-dim:rgba(13,127,150,.1);
+    --blue-bg:rgba(43,108,205,.1);   --blue-text:#2563c4;
+    --green-bg:rgba(34,139,84,.1);   --green-text:#1d7c46;
+    --red-bg:rgba(204,52,52,.09);    --red-text:#c03434;
+    --green:var(--green-text); --red:var(--red-text); --orange:var(--accent);
+    --shadow-md:0 4px 14px rgba(24,32,56,.1);
+    --shadow-lg:0 18px 48px rgba(24,32,56,.16);
+  }
+}
+
+body{
+  font-family:var(--font-body);
+  background:var(--bg);color:var(--text);
+  min-height:100vh;display:flex;align-items:flex-start;
+  justify-content:center;padding:2.5rem 1rem;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--accent);color:var(--on-accent);}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+
+/* ── kartu utama ── */
+.card{
+  background:var(--bg1);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:2rem;
+  width:100%;max-width:760px;
+  box-shadow:var(--shadow-lg);
+  position:relative;
+}
+/* kilau tepi atas ala fasad mesin */
+.card::before{
+  content:"";position:absolute;inset:0 0 auto 0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  opacity:.5;pointer-events:none;
+}
+
+/* ── header ── */
+.header{margin-bottom:1.75rem;}
+.brand-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.brand-mark{
+  width:30px;height:30px;border-radius:8px;flex-shrink:0;
+  background:var(--accent);color:var(--on-accent);
+  display:inline-flex;align-items:center;justify-content:center;font-size:18px;
+}
+.header .label{
+  font-family:var(--font-mono);font-size:11px;color:var(--accent);
+  font-weight:600;letter-spacing:.22em;text-transform:uppercase;
+}
+.header h1{
+  font-family:var(--font-display);
+  font-size:clamp(26px,4vw,32px);font-weight:700;
+  letter-spacing:.01em;text-transform:uppercase;line-height:1.1;
+}
+.format-badge{
+  display:inline-block;font-family:var(--font-mono);
+  font-size:10px;font-weight:600;letter-spacing:.14em;
+  padding:4px 10px;border-radius:99px;
+  background:transparent;color:var(--studio);
+  border:1px solid var(--studio);
+  margin-left:10px;vertical-align:middle;transform:translateY(-3px);
+}
+
+/* ── loader boot ── */
+#loader{
+  background:var(--bg2);border-radius:var(--radius);
+  border:1px solid var(--border);padding:2.5rem 1rem;
+  text-align:center;
+}
+.loader-spinner{
+  width:38px;height:38px;
+  border:3px solid var(--bg3);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin .9s linear infinite;
+  margin:0 auto 16px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loader p{font-size:13px;color:var(--text2);margin-bottom:12px;}
+#loader-track{background:var(--bg3);border-radius:99px;height:4px;overflow:hidden;margin:0 auto;max-width:300px;}
+#loader-fill{height:100%;width:0%;background:var(--accent);border-radius:99px;transition:width .4s;}
+#loader-pct{font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-top:10px;}
+
+@media(max-width:640px){
+  body{padding:1rem .75rem;}
+  .card{padding:1.35rem;}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important;}
+}

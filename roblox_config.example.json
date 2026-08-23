@@ -1,0 +1,8 @@
+{
+  "client_id": "1234567890123456789",
+  "client_secret": "RBX-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "redirect_uri": "http://127.0.0.1:8000/api/roblox/callback",
+  "_comment": "OPSIONAL — fallback API key (first-party, tidak kena resource selection OAuth): buat di https://create.roblox.com/dashboard/credentials → API Keys → Add API Key → Scope 'Assets' → Read+Write, lalu isi api_key & user_id (ID Roblox kamu). Jika api_key diisi, upload memakai x-api-key dan login OAuth jadi opsional.",
+  "api_key": "",
+  "user_id": ""
+}

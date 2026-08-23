@@ -1,0 +1,15 @@
+{
+  "name": "hidden-audio-converter",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Hidden Audio Batch Converter — Tauri v2 desktop app",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "sidecar": "python scripts/build_sidecar.py"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
