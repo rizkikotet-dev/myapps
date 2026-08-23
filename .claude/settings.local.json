@@ -15,7 +15,9 @@
       "Bash(netstat -ano)",
       "Bash(taskkill //F //PID 20236 //PID 20592)",
       "Bash(python *)",
-      "Bash(rtk pip *)"
+      "Bash(rtk pip *)",
+      "WebSearch",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
