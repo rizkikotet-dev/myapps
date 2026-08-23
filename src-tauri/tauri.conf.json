@@ -16,7 +16,8 @@
         "width": 1180,
         "height": 820,
         "minWidth": 900,
-        "minHeight": 620
+        "minHeight": 620,
+        "dragDropEnabled": false
       }
     ],
     "security": {
@@ -28,6 +29,9 @@
     "targets": "all",
     "category": "Music",
     "shortDescription": "Batch audio -> OGG hidden-speed converter",
+    "macOS": {
+      "signingIdentity": "-"
+    },
     "externalBin": ["binaries/hidden-audio-server"],
     "icon": [
       "icons/32x32.png",

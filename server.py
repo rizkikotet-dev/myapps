@@ -62,14 +62,20 @@ def ensure_dirs():
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
 def _parent_watchdog():
-    # mode desktop: keluar otomatis saat proses induk (Tauri) mati —
-    # pipe stdin tertutup = EOF = parent sudah tidak ada.
-    try:
-        if sys.stdin is None:
-            return
-        sys.stdin.read()
-    except Exception:
-        pass
+    # mode desktop: keluar otomatis saat proses induk (Tauri) mati.
+    # Windows: pipe stdin tertutup = EOF = parent sudah tidak ada.
+    # Unix: anak PyInstaller mewarisi fd stdin sehingga EOF tak pernah
+    # terpicu saat induk di-SIGKILL — deteksi via reparenting ke PID 1.
+    import time
+    if os.name == "nt":
+        try:
+            if sys.stdin is not None:
+                sys.stdin.read()
+        except Exception:
+            pass
+    else:
+        while os.getppid() != 1:
+            time.sleep(1)
     os._exit(0)
 
 def unique_path(directory: Path, filename: str) -> Path:

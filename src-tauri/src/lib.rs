@@ -83,7 +83,12 @@ fn kill_server(app: &tauri::AppHandle) {
                         .status();
                 }
                 #[cfg(not(windows))]
-                let _ = child.kill();
+                {
+                    // kill() hanya mematikan bootloader PyInstaller; proses anak
+                    // Python yatim akan mendeteksi reparenting ke PID 1 lewat
+                    // _parent_watchdog() di server.py dan keluar sendiri.
+                    let _ = child.kill();
+                }
             }
         }
     }
