@@ -194,17 +194,24 @@ window.App = window.App || {};
       html:
         '<div class="about-body">' +
           '<div class="about-logo"><i class="ti ti-wave-sine"></i></div>' +
-          `<p class="about-dev">Developer <b>${U.escapeHtml(A.developer)}</b></p>` +
+          '<div class="about-chip"><i class="ti ti-code"></i> Developer &middot; <b>' + U.escapeHtml(A.developer) + '</b></div>' +
           '<p class="about-sub">Hidden Audio Batch Converter — konversi audio ke OGG dengan trik sample-rate untuk Roblox Studio.</p>' +
           '<div class="about-links">' +
-            `<button type="button" class="about-btn" data-url="${A.links.github}"><i class="ti ti-brand-github"></i> GitHub</button>` +
-            `<button type="button" class="about-btn" data-url="${A.links.discord}"><i class="ti ti-brand-discord"></i> Discord</button>` +
+            `<button type="button" class="about-btn about-btn-github" data-url="${A.links.github}"><i class="ti ti-brand-github"></i> GitHub</button>` +
+            `<button type="button" class="about-btn about-btn-discord" data-url="${A.links.discord}"><i class="ti ti-brand-discord"></i> Discord</button>` +
             `<button type="button" class="about-btn about-btn-donate" data-url="${A.links.donate}"><i class="ti ti-heart"></i> Donasi</button>` +
           '</div>' +
         '</div>',
       showConfirmButton: true,
-      confirmButtonText: 'Tutup',
-      focusConfirm: true,
+      confirmButtonText: '<i class="ti ti-x"></i> Tutup',
+      buttonsStyling: false,
+      customClass: {
+        container: 'about-container',
+        popup: 'about-popup',
+        title: 'about-title',
+        htmlContainer: 'about-html',
+        confirmButton: 'about-close',
+      },
       didOpen: () => {
         Swal.getPopup().querySelectorAll('.about-btn').forEach(btn =>
           btn.addEventListener('click', () => openExternal(btn.dataset.url)));
