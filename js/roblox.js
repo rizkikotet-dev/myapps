@@ -259,6 +259,7 @@ App.roblox = (() => {
         moderation: item.roblox.moderation || '',
         error: item.roblox.error || '',
       });
+      item.roblox.parts = doneParts;
       results.push(doneParts[doneParts.length - 1]);
     }
     return results;

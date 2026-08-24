@@ -137,7 +137,7 @@ App.files = (() => {
       fill.style.width = r.progress + '%';
     }
     const badge = document.querySelector(`[data-rbadge="${item.uid}"]`);
-    if (badge) badge.textContent = `Upload ${r.progress}%`;
+    if (badge) badge.textContent = (r.partLabel ? r.partLabel + ' · ' : '') + `Upload ${r.progress}%`;
     let pct = document.querySelector(`[data-rpct="${item.uid}"]`);
     if (!pct && fill) {
       pct = document.createElement('span');
