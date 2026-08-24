@@ -11,6 +11,8 @@ src-tauri/gen/schemas/
 src-tauri/dist/
 src-tauri/binaries/
 build-sidecar/
+tauri.key
+tauri.key.pub
 
 __pycache__/
 *.pyc

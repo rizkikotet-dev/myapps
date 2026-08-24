@@ -362,12 +362,18 @@ jobs:
           echo "Target: ${{ matrix.target }}"
           echo "=============================================="
 
-          if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
-            echo "::warning::TAURI_SIGNING_PRIVATE_KEY is not configured."
-            echo "Building without updater signing."
-          else
-            echo "Updater signing key detected."
-          fi
+          # Valid key = raw minisign text ATAU base64 dari "untrusted comment:"
+          case "$TAURI_SIGNING_PRIVATE_KEY" in
+            "untrusted comment:"*|"dW50cnVzdGVkIGNvbW1lbnQ6"*)
+              echo "Updater signing key detected."
+              ;;
+            *)
+              echo "::warning::TAURI_SIGNING_PRIVATE_KEY is malformed."
+              echo "Paste the FULL contents of tauri.key (one base64 line) into the secret."
+              echo "Building without updater signing."
+              unset TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+              ;;
+          esac
 
           npx tauri build \
             --target "${{ matrix.target }}"
