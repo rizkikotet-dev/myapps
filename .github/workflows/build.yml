@@ -1,55 +1,168 @@
 name: Build & Release Desktop App
 
+# ============================================================
+# Build Matrix + Artifact + Centralized Release
+#
+# Flow:
+#   workflow_dispatch tanpa version
+#       -> Build only
+#
+#   workflow_dispatch dengan version
+#       -> Build + Release
+#
+#   push tag v*
+#       -> Build + Release
+#
+# Release hanya dibuat 1x oleh job "release".
+# ============================================================
+
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Versi rilis (mis. v1.2.3) — kosongkan untuk build tanpa rilis"
+        description: "Versi rilis, contoh: v1.2.3 atau 1.2.3. Kosongkan untuk build saja."
         required: false
         default: ""
+        type: string
+
   push:
     tags:
       - "v*"
 
-concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
+# ============================================================
+# GLOBAL ENVIRONMENT
+# ============================================================
 
 env:
-  VERSION: ${{ github.event_name == 'push' && github.ref_name || github.event.inputs.version }}
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.12"
+  RUST_TOOLCHAIN: "stable"
+
+  # Push tag:
+  #   v1.2.3
+  #
+  # Manual:
+  #   input version
+  #
+  # Empty:
+  #   build only
+  VERSION: >-
+    ${{ github.event_name == 'push'
+      && github.ref_name
+      || github.event.inputs.version }}
+
+# ============================================================
+# CONCURRENCY
+# ============================================================
+
+concurrency:
+  group: build-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ============================================================
+# JOBS
+# ============================================================
 
 jobs:
+
+  # ==========================================================
+  # BUILD
+  # ==========================================================
+
   build:
+    name: Build (${{ matrix.label }})
+
+    runs-on: ${{ matrix.os }}
+
     permissions:
-      contents: write
+      contents: read
+
     strategy:
       fail-fast: false
+
       matrix:
         include:
+
+          # --------------------------------------------------
+          # Windows x86_64
+          # --------------------------------------------------
+
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: "Windows x86_64"
+
+          # --------------------------------------------------
+          # macOS Apple Silicon
+          # --------------------------------------------------
+
           - os: macos-latest
             target: aarch64-apple-darwin
             label: "macOS Apple Silicon"
 
-    runs-on: ${{ matrix.os }}
-    name: Build (${{ matrix.label }})
-    
     steps:
+
+      # ======================================================
+      # CHECKOUT
+      # ======================================================
+
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Python Environment
+      # ======================================================
+      # VALIDATE PROJECT
+      # ======================================================
+
+      - name: Validate Project Structure
+        shell: bash
+        run: |
+          set -e
+
+          echo "=============================================="
+          echo "Validating project structure"
+          echo "=============================================="
+
+          required_files=(
+            "package.json"
+            "package-lock.json"
+            "requirements.txt"
+            "scripts/build_sidecar.py"
+            "src-tauri/tauri.conf.json"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "::error::Required file not found: $file"
+              exit 1
+            fi
+          done
+
+          echo "Project structure OK."
+
+      # ======================================================
+      # PYTHON
+      # ======================================================
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: "pip"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install Python Dependencies
+        shell: bash
         run: |
+          set -e
+
           python -m pip install --upgrade pip
-          pip install pyinstaller -r requirements.txt
+
+          pip install \
+            pyinstaller \
+            -r requirements.txt
+
+      # ======================================================
+      # ROBLOX OAUTH CONFIG
+      # ======================================================
 
       - name: Generate Roblox OAuth Configuration
         env:
@@ -58,55 +171,155 @@ jobs:
           RBX_REDIRECT_URI: ${{ secrets.redirect_uri }}
         shell: bash
         run: |
-          # Improvisasi: Menggunakan Python untuk generate JSON agar terhindar dari error indentasi/spasial pada bash
+          set -e
+
           python - <<'PY'
-          import json, os
-          
-          client_id = os.getenv("RBX_CLIENT_ID", "")
-          client_secret = os.getenv("RBX_CLIENT_SECRET", "")
-          redirect_uri = os.getenv("RBX_REDIRECT_URI", "http://localhost:55502/callback")
+          import json
+          import os
+          from pathlib import Path
+
+          client_id = os.getenv("RBX_CLIENT_ID", "").strip()
+          client_secret = os.getenv("RBX_CLIENT_SECRET", "").strip()
+          redirect_uri = os.getenv(
+              "RBX_REDIRECT_URI",
+              "http://localhost:55502/callback"
+          ).strip()
+
+          output = Path("roblox_config.json")
 
           if not client_id or not client_secret:
-              print("::warning::Secrets 'client_id' atau 'client_secret' belum diset. Build berjalan TANPA OAuth Roblox.")
+              print(
+                  "::warning::"
+                  "Roblox OAuth secrets tidak tersedia. "
+                  "Build akan berjalan tanpa OAuth configuration."
+              )
+
+              # Pastikan config lama tidak ikut terbawa.
+              if output.exists():
+                  output.unlink()
+
           else:
               config = {
                   "client_id": client_id,
                   "client_secret": client_secret,
-                  "redirect_uri": redirect_uri
+                  "redirect_uri": redirect_uri,
               }
-              with open("roblox_config.json", "w", encoding="utf-8") as f:
-                  json.dump(config, f, indent=4)
-              print("::notice::roblox_config.json berhasil dibuat.")
+
+              output.write_text(
+                  json.dumps(config, indent=4),
+                  encoding="utf-8",
+              )
+
+              print("::notice::Roblox OAuth configuration generated.")
           PY
 
-      - name: Change Version Tauri Config
+      # ======================================================
+      # NORMALIZE VERSION
+      # ======================================================
+
+      - name: Normalize Version
+        id: version
         shell: bash
         run: |
-          if [ -n "${{ env.VERSION }}" ]; then
-            echo "Mengubah versi di tauri.conf.json menjadi ${{ env.VERSION }}"
-            python - <<'PY'
-            import json, os
+          set -e
 
-            version = os.getenv("VERSION", "")
-            if version:
-                with open("src-tauri/tauri.conf.json", "r+", encoding="utf-8") as f:
-                    config = json.load(f)
-                    config["version"] = version.lstrip("v")
-                    f.seek(0)
-                    json.dump(config, f, indent=4)
-                    f.truncate()
-                print(f"Versi di tauri.conf.json diubah menjadi {version.lstrip('v')}")
-            else:
-                print("Tidak ada versi yang diberikan. Menggunakan versi default di tauri.conf.json.")
-            PY
-          else
-            echo "Tidak ada versi yang diberikan. Menggunakan versi default di tauri.conf.json."
+          RAW_VERSION="${VERSION:-}"
+
+          # Remove whitespace
+          RAW_VERSION="$(echo "$RAW_VERSION" | xargs)"
+
+          if [ -z "$RAW_VERSION" ]; then
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+
+            echo "No release version specified."
+            echo "Mode: BUILD ONLY"
+
+            exit 0
           fi
 
-      - name: Build Python Sidecar
-        run: python scripts/build_sidecar.py
+          # Ensure version starts with v for release tag.
+          if [[ "$RAW_VERSION" != v* ]]; then
+            RAW_VERSION="v${RAW_VERSION}"
+          fi
 
-      - name: Setup Rust Toolchain
+          VERSION_NUMBER="${RAW_VERSION#v}"
+
+          # Basic semantic version validation.
+          if [[ ! "$VERSION_NUMBER" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid version: $RAW_VERSION"
+            echo "::error::Expected format: v1.2.3"
+            exit 1
+          fi
+
+          echo "version=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "tag=$RAW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
+          echo "Release version : $VERSION_NUMBER"
+          echo "Release tag     : $RAW_VERSION"
+
+      # ======================================================
+      # UPDATE TAURI VERSION
+      # ======================================================
+
+      - name: Update Tauri Version
+        shell: bash
+        run: |
+          set -e
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          raw_version = os.getenv("VERSION", "").strip()
+
+          if not raw_version:
+              print("Using version from tauri.conf.json")
+              raise SystemExit(0)
+
+          version = raw_version.lstrip("v")
+
+          path = Path("src-tauri/tauri.conf.json")
+
+          with path.open("r", encoding="utf-8") as f:
+              config = json.load(f)
+
+          config["version"] = version
+
+          with path.open("w", encoding="utf-8") as f:
+              json.dump(
+                  config,
+                  f,
+                  indent=2,
+                  ensure_ascii=False,
+              )
+              f.write("\n")
+
+          print(f"Tauri version updated to {version}")
+          PY
+
+      # ======================================================
+      # BUILD PYTHON SIDECAR
+      # ======================================================
+
+      - name: Build Python Sidecar
+        shell: bash
+        run: |
+          set -e
+
+          echo "Building Python sidecar..."
+
+          python scripts/build_sidecar.py
+
+          echo "Python sidecar build completed."
+
+      # ======================================================
+      # RUST
+      # ======================================================
+
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -114,73 +327,342 @@ jobs:
       - name: Cache Rust Dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "src-tauri -> target"
+          workspaces: |
+            src-tauri -> target
+          shared-key: ${{ matrix.target }}
 
-      - name: Setup Node.js Environment
+      # ======================================================
+      # NODE
+      # ======================================================
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Install JavaScript Dependencies
+      - name: Install Node Dependencies
         run: npm ci
 
-      - name: Build Tauri App (signed for updater)
+      # ======================================================
+      # BUILD TAURI
+      # ======================================================
+
+      - name: Build Tauri Application
         env:
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         shell: bash
         run: |
-          # private key updater dari secret repo (minisign, tanpa password)
-          echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" > "$RUNNER_TEMP/updater.key"
-          export TAURI_SIGNING_PRIVATE_KEY="$(cat "$RUNNER_TEMP/updater.key")"
-          npx tauri build --target ${{ matrix.target }}
-          rm -f "$RUNNER_TEMP/updater.key"
+          set -e
 
-      - name: Upload Build Artifacts (Debug/Non-Release)
-        if: env.VERSION == ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: tauri-build-${{ matrix.target }}
-          path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
-          if-no-files-found: warn
-          retention-days: 7
+          echo "=============================================="
+          echo "Building Tauri"
+          echo "Target: ${{ matrix.target }}"
+          echo "=============================================="
 
-      - name: Collect updater artifacts
-        if: env.VERSION != ''
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY is not configured."
+            echo "Building without updater signing."
+          else
+            echo "Updater signing key detected."
+          fi
+
+          npx tauri build \
+            --target "${{ matrix.target }}"
+
+      # ======================================================
+      # SHOW BUILD OUTPUT
+      # ======================================================
+
+      - name: Inspect Build Output
         shell: bash
         run: |
-          # kumpulkan latest.json per-platform (nama file unik agar tidak saling timpa)
-          mkdir -p updater-out
-          found=0
-          for f in src-tauri/target/*/release/bundle/updater/latest.json; do
-            [ -f "$f" ] || continue
-            found=1
-            plat=$(basename "$(dirname "$(dirname "$(dirname "$f")")")")
-            cp "$f" "updater-out/latest-${plat}.json"
-          done
-          [ "$found" = "1" ] || echo "::warning::Tidak ada latest.json — updater artifacts kosong?"
+          set +e
 
-      - name: Upload updater JSON artifact
-        if: env.VERSION != ''
+          echo "=============================================="
+          echo "Build Output"
+          echo "=============================================="
+
+          if [ -d "src-tauri/target/${{ matrix.target }}/release/bundle" ]; then
+            find \
+              "src-tauri/target/${{ matrix.target }}/release/bundle" \
+              -type f \
+              -print
+          else
+            echo "::warning::Bundle directory not found."
+          fi
+
+      # ======================================================
+      # PACKAGE BUILD ARTIFACT
+      # ======================================================
+
+      - name: Prepare Build Artifact
+        shell: bash
+        run: |
+          set -e
+
+          TARGET_DIR="src-tauri/target/${{ matrix.target }}/release/bundle"
+          OUTPUT_DIR="artifacts/${{ matrix.target }}"
+
+          mkdir -p "$OUTPUT_DIR"
+
+          # --------------------------------------------------
+          # Windows
+          # --------------------------------------------------
+
+          if [ -d "$TARGET_DIR/nsis" ]; then
+            find "$TARGET_DIR/nsis" \
+              -type f \
+              \( -name "*.exe" -o -name "*.sig" \) \
+              -exec cp {} "$OUTPUT_DIR/" \;
+          fi
+
+          if [ -d "$TARGET_DIR/msi" ]; then
+            find "$TARGET_DIR/msi" \
+              -type f \
+              \( -name "*.msi" -o -name "*.sig" \) \
+              -exec cp {} "$OUTPUT_DIR/" \;
+          fi
+
+          # --------------------------------------------------
+          # macOS
+          # --------------------------------------------------
+
+          if [ -d "$TARGET_DIR/dmg" ]; then
+            find "$TARGET_DIR/dmg" \
+              -type f \
+              \( -name "*.dmg" -o -name "*.sig" \) \
+              -exec cp {} "$OUTPUT_DIR/" \;
+          fi
+
+          # --------------------------------------------------
+          # Updater
+          # --------------------------------------------------
+
+          if [ -d "$TARGET_DIR/updater" ]; then
+            find "$TARGET_DIR/updater" \
+              -type f \
+              -exec cp {} "$OUTPUT_DIR/" \;
+          fi
+
+          echo "=============================================="
+          echo "Prepared artifacts:"
+          echo "=============================================="
+
+          find "$OUTPUT_DIR" -type f -print
+
+      # ======================================================
+      # UPLOAD BUILD ARTIFACT
+      # ======================================================
+
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: updater-json-${{ matrix.target }}
-          path: updater-out/*.json
-          if-no-files-found: warn
+          name: desktop-${{ matrix.target }}
+          path: artifacts/${{ matrix.target }}
+          if-no-files-found: error
+          retention-days: 14
+
+  # ==========================================================
+  # RELEASE
+  # ==========================================================
+
+  release:
+    name: Publish GitHub Release
+
+    needs:
+      - build
+
+    if: >-
+      ${{
+        github.event_name == 'push'
+        ||
+        (
+          github.event_name == 'workflow_dispatch'
+          &&
+          github.event.inputs.version != ''
+        )
+      }}
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+
+      # ======================================================
+      # CHECKOUT
+      # ======================================================
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ======================================================
+      # NORMALIZE VERSION
+      # ======================================================
+
+      - name: Resolve Release Version
+        id: release
+        shell: bash
+        run: |
+          set -e
+
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="${{ github.event.inputs.version }}"
+
+            if [[ "$TAG" != v* ]]; then
+              TAG="v${TAG}"
+            fi
+          fi
+
+          VERSION="${TAG#v}"
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid release version: $VERSION"
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          echo "Release tag: $TAG"
+          echo "Release version: $VERSION"
+
+      # ======================================================
+      # DOWNLOAD ALL BUILD ARTIFACTS
+      # ======================================================
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-x86_64-pc-windows-msvc
+          path: release-assets/windows
+
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-aarch64-apple-darwin
+          path: release-assets/macos
+
+      # ======================================================
+      # SHOW RELEASE FILES
+      # ======================================================
+
+      - name: Inspect Release Assets
+        shell: bash
+        run: |
+          set -e
+
+          echo "=============================================="
+          echo "Release Assets"
+          echo "=============================================="
+
+          find release-assets \
+            -type f \
+            -print \
+            | sort
+
+      # ======================================================
+      # VALIDATE RELEASE ASSETS
+      # ======================================================
+
+      - name: Validate Release Assets
+        shell: bash
+        run: |
+          set -e
+
+          FILE_COUNT="$(find release-assets -type f | wc -l)"
+
+          if [ "$FILE_COUNT" -eq 0 ]; then
+            echo "::error::No release assets found."
+            exit 1
+          fi
+
+          echo "Found $FILE_COUNT release files."
+
+      # ======================================================
+      # GENERATE CHECKSUMS
+      # ======================================================
+
+      - name: Generate SHA256 Checksums
+        shell: bash
+        run: |
+          set -e
+
+          cd release-assets
+
+          find . \
+            -type f \
+            ! -name "SHA256SUMS.txt" \
+            -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            > SHA256SUMS.txt
+
+          echo "SHA256SUMS.txt generated."
+
+          cat SHA256SUMS.txt
+
+      # ======================================================
+      # FLATTEN ASSETS
+      # ======================================================
+
+      - name: Prepare Release Assets
+        shell: bash
+        run: |
+          set -e
+
+          mkdir -p final-release
+
+          # Windows
+          find release-assets/windows \
+            -type f \
+            -exec cp {} final-release/ \;
+
+          # macOS
+          find release-assets/macos \
+            -type f \
+            -exec cp {} final-release/ \;
+
+          # Checksums
+          cp release-assets/SHA256SUMS.txt final-release/
+
+          echo "=============================================="
+          echo "Final Release Files"
+          echo "=============================================="
+
+          find final-release \
+            -maxdepth 1 \
+            -type f \
+            -printf "%f\n" \
+            | sort
+
+      # ======================================================
+      # PUBLISH RELEASE
+      # ======================================================
 
       - name: Publish GitHub Release
-        if: env.VERSION != ''
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.VERSION }}
-          name: ${{ env.VERSION }}
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: "Desktop App ${{ steps.release.outputs.tag }}"
+
+          generate_release_notes: true
+
           draft: false
-          prerelease: ${{ contains(env.VERSION, '-') }}
+
+          prerelease: >-
+            ${{
+              contains(
+                steps.release.outputs.version,
+                '-'
+              )
+            }}
+
           files: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
-            updater-out/*.json
+            final-release/*

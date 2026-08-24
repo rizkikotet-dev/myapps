@@ -22,7 +22,13 @@
       "Bash(node *)",
       "Bash(npm install *)",
       "Bash(mkdir -p 'C:\\\\Users\\\\rizkivalency/.tauri')",
-      "Bash(npx tauri *)"
+      "Bash(npx tauri *)",
+      "Bash(awk '/Change Version Tauri Config/,/Build Python Sidecar/' .github/workflows/build.yml)",
+      "Bash(mkdir -p /tmp/wftest/src-tauri)",
+      "Bash(echo '{\"version\":\"0.0.0\"}')",
+      "Read(//tmp/**)",
+      "Bash(export VERSION=v1.2.3)",
+      "Bash(bash -c ' *)"
     ]
   }
 }
