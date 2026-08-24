@@ -198,7 +198,7 @@ App.roblox = (() => {
     }
 
     if (item) {
-      item.roblox = { status: 'uploading', msg: 'Uploading…', progress: 0 };
+      item.roblox = { ...(item.roblox || {}), status: 'uploading', msg: 'Uploading…', progress: 0 };
       App.files.renderRows();
     }
     setRobloxStatus(`Uploading ${filename} ke Roblox… 0%`, '');
@@ -230,7 +230,7 @@ App.roblox = (() => {
       }
     } catch (e) {
       console.error('roblox upload err', e);
-      if (item) { item.roblox = { status: 'error', error: e.message.slice(0, 220) }; App.files.renderRows(); }
+      if (item) { item.roblox = { ...(item.roblox || {}), status: 'error', error: e.message.slice(0, 220) }; App.files.renderRows(); }
       setRobloxStatus(`Gagal upload ${filename}: ${String(e.message).slice(0, 260)}`, 'err');
       U().toast('error', 'Upload Roblox gagal');
       if (e.message.includes('relogin') || /not authenticated/i.test(e.message)) {
@@ -244,5 +244,27 @@ App.roblox = (() => {
     }
   }
 
-  return { checkRoblox, setRobloxStatus, uploadToRoblox, pollRobloxOperation };
+  // Upload berurutan untuk satu file (bisa multi-part). Mengembalikan hasil per part.
+  async function uploadParts(item, parts) {
+    const results = [];
+    const doneParts = [];
+    for (let k = 0; k < parts.length; k++) {
+      const p = parts[k];
+      item.roblox = { status: 'idle', parts: doneParts, partLabel: parts.length > 1 ? `Part ${k + 1}/${parts.length}` : '' };
+      await uploadToRoblox(p.blob, p.fileName, p.displayName, item);
+      doneParts.push({
+        name: p.displayName,
+        assetId: item.roblox.assetId || '',
+        status: item.roblox.status,
+        moderation: item.roblox.moderation || '',
+        error: item.roblox.error || '',
+      });
+      results.push(doneParts[doneParts.length - 1]);
+    }
+    return results;
+  }
+
+  async function showPartsSummary(item) { /* didefinisikan penuh di task berikutnya */ }
+
+  return { checkRoblox, setRobloxStatus, uploadToRoblox, uploadParts, showPartsSummary, pollRobloxOperation };
 })();

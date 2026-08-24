@@ -183,6 +183,8 @@ App.audio = (() => {
         merged[23] = (newCrc >>> 8) & 0xff;
         merged[24] = (newCrc >>> 16) & 0xff;
         merged[25] = (newCrc >>> 24) & 0xff;
+      } else {
+        console.warn('header hack skip — page pertama tidak dikenali');
       }
       return new Blob([merged], { type: 'audio/ogg' });
     }
@@ -230,20 +232,24 @@ App.audio = (() => {
       E().progFill.style.width = pct + '%';
       await new Promise(r => setTimeout(r, 20));
       try {
-        const blob = await convertOne(item, speed, gain, quality);
-        const outName = App.files.outNameFor(item);
+        const partsOut = await convertOne(item, speed, gain, quality);
         if (autoMode) {
-          // Auto Upload: hasil TIDAK disimpan di server & TIDAK diunduh — langsung ke Roblox
+          // Auto Upload: semua part langsung ke Roblox — tanpa file lokal/server
+          try {
+            await App.roblox.uploadParts(item, partsOut);
+            if (partsOut.length > 1) App.roblox.showPartsSummary(item);
+          } catch (e) { console.warn('auto upload skip', e); }
         } else {
-          // Mode manual: unduh ke folder Downloads milik user (bukan disimpan di server)
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = outName;
-          document.body.appendChild(a); a.click();
-          document.body.removeChild(a); URL.revokeObjectURL(url);
+          // Mode manual: unduh tiap part ke Downloads
+          for (const p of partsOut) {
+            const url = URL.createObjectURL(p.blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = p.fileName;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a); URL.revokeObjectURL(url);
+            await new Promise(r => setTimeout(r, 350));
+          }
         }
-        try { await App.roblox.uploadToRoblox(blob, outName, outName.replace(/\.ogg$/, ''), item); }
-        catch (e) { console.warn('auto upload skip', e); }
         item.status = 'done'; doneCount++;
       } catch (e) {
         item.status = 'err'; failCount++;

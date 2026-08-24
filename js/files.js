@@ -29,13 +29,15 @@ App.files = (() => {
       error: ['rblx-err', '✗ Gagal'],
     };
     const [cls, label] = map[r.status] || ['rblx-pend', r.status];
+    const pl = r.partLabel ? r.partLabel + ' · ' : '';
+    const text = pl + label;
     let extra = '';
     if (r.assetId) extra = ' ID ' + r.assetId;
     else if (r.operationId) extra = ' #' + r.operationId.slice(0, 6);
     else if (r.msg) extra = ' ' + r.msg.slice(0, 28);
     const live = r.status === 'uploading' ? ` data-rbadge="${item.uid}"` : '';
     const title = U().escapeHtml((r.error || r.msg || '') + (r.assetId ? ' — Asset ID ' + r.assetId : ''));
-    return `<span class="rblx-badge ${cls}"${live} title="${title}">${label}${U().escapeHtml(extra)}</span>`;
+    return `<span class="rblx-badge ${cls}"${live} title="${title}">${U().escapeHtml(text)}${U().escapeHtml(extra)}</span>`;
   }
 
   function moderationLabel(st) {

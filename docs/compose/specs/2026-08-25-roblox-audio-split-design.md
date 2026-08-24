@@ -22,7 +22,7 @@ Base nama keluaran `Lagu` menghasilkan `Lagu - Part1.ogg`, `Lagu - Part2.ogg`, â
 ## [S5] Perubahan konversi (`js/audio.js`)
 - Langkah "encode OGG + header hack" dipindah ke helper `encodeRange(startSample, endSample, â€¦)`; dipanggil sekali per part.
 - Header hack dieksekusi per part karena tiap part adalah stream OGG baru dengan halaman pertamanya sendiri.
-- `convertOne` mengembalikan array `[{blob, name, displayName}]` (panjang 1 untuk file yang tak dipecah).
+- `convertOne` mengembalikan array `[{blob, fileName, displayName}]` (panjang 1 untuk file yang tak dipecah).
 
 ## [S6] Alur unduh & upload
 - Mode manual: semua part diunduh berurutan memakai mekanisme unduh existing.
