@@ -1,7 +1,9 @@
 // Self-check murni-matematika untuk split audio (tanpa browser).
 // Jalankan: node scripts/test_split_math.cjs
 global.window = global;
-new Function(require('fs').readFileSync('js/audio.js', 'utf8'))();
+const path = require('path');
+const src = require('fs').readFileSync(path.join(__dirname, '..', 'js', 'audio.js'), 'utf8');
+new Function(src)();
 const A = window.App.audio;
 const assert = require('assert');
 const SR = 44100;
@@ -41,5 +43,10 @@ assert.deepStrictEqual(n, [{ fileName: 'Lagu.ogg', displayName: 'Lagu' }]);
 n = A.partNames('Lagu', 3);
 assert.deepStrictEqual(n.map(x => x.fileName), ['Lagu - Part1.ogg', 'Lagu - Part2.ogg', 'Lagu - Part3.ogg']);
 assert.strictEqual(n[1].displayName, 'Lagu - Part2');
+
+// 8) tepat di atas ambang -> part kedua 1 sampel
+r = A.computePartRanges(Math.round(SR * 410) + 1, SR, 1);
+assert.strictEqual(r.length, 2);
+assert.deepStrictEqual(r[1], { start: Math.round(SR * 410), end: Math.round(SR * 410) + 1 });
 
 console.log('OK: split math + naming benar');

@@ -98,6 +98,7 @@ App.audio = (() => {
   // Durasi efektif yg dilihat Roblox = samples/(sr*speed) akibat header-hack sample rate.
   function computePartRanges(totalSamples, sampleRate, speed) {
     const spp = Math.round(sampleRate * speed * PART_MAX_EFF_SEC);
+    if (!(spp > 0)) return [{ start: 0, end: totalSamples }];
     if (totalSamples <= spp) return [{ start: 0, end: totalSamples }];
     const ranges = [];
     for (let s = 0; s < totalSamples; s += spp) {
@@ -140,48 +141,72 @@ App.audio = (() => {
     const channels = [];
     for (let c = 0; c < nCh; c++) channels.push(rendered.getChannelData(c));
 
-    // Langkah 2: encode OGG Vorbis
-    const enc = await WasmMediaEncoder.createOggEncoder();
-    enc.configure({ sampleRate: originalSr, channels: nCh, vbrQuality: quality / 9 });
-
-    const CHUNK = 4096;
-    const oggParts = [];
-    for (let offset = 0; offset < rendered.length; offset += CHUNK) {
-      const end = Math.min(offset + CHUNK, rendered.length);
-      const out = enc.encode(channels.map(ch => ch.subarray(offset, end)));
-      if (out.length) oggParts.push(new Uint8Array(out));
-    }
-    const fin = enc.finalize();
-    if (fin.length) oggParts.push(new Uint8Array(fin));
-
-    const totalLen = oggParts.reduce((s, p) => s + p.length, 0);
-    const merged = new Uint8Array(totalLen);
-    let off = 0;
-    for (const p of oggParts) { merged.set(p, off); off += p.length; }
-
-    // Langkah 3: header hack — sample rate * speed + CRC32
-    const pageSegments = merged[26];
-    let packetLength = 0;
-    for (let s = 0; s < pageSegments; s++) packetLength += merged[27 + s];
-    const pageSize = 27 + pageSegments + packetLength;
-    const packetStart = 27 + pageSegments;
-
-    if (merged[0] === 0x4f && merged[1] === 0x67 && merged[2] === 0x67 && merged[3] === 0x53 &&
-        merged[packetStart] === 0x01 && merged[packetStart + 1] === 0x76 && merged[packetStart + 2] === 0x6f) {
-      const targetSr = Math.round(originalSr * speed);
-      merged[packetStart + 12] = targetSr & 0xff;
-      merged[packetStart + 13] = (targetSr >>> 8) & 0xff;
-      merged[packetStart + 14] = (targetSr >>> 16) & 0xff;
-      merged[packetStart + 15] = (targetSr >>> 24) & 0xff;
-      merged[22] = 0; merged[23] = 0; merged[24] = 0; merged[25] = 0;
-      const newCrc = computeOggCrc(merged, 0, pageSize);
-      merged[22] = newCrc & 0xff;
-      merged[23] = (newCrc >>> 8) & 0xff;
-      merged[24] = (newCrc >>> 16) & 0xff;
-      merged[25] = (newCrc >>> 24) & 0xff;
+    function mergeBytes(partsArr) {
+      const totalLen = partsArr.reduce((s, p) => s + p.length, 0);
+      const merged = new Uint8Array(totalLen);
+      let off = 0;
+      for (const p of partsArr) { merged.set(p, off); off += p.length; }
+      return merged;
     }
 
-    return new Blob([merged], { type: 'audio/ogg' });
+    // Langkah 2+3 lama, kini per rentang: encode OGG + header hack sample-rate.
+    async function encodeRange(startSample, endSample) {
+      const enc = await WasmMediaEncoder.createOggEncoder();
+      enc.configure({ sampleRate: originalSr, channels: nCh, vbrQuality: quality / 9 });
+      const CHUNK = 4096;
+      const oggParts = [];
+      for (let offset = startSample; offset < endSample; offset += CHUNK) {
+        const end = Math.min(offset + CHUNK, endSample);
+        const out = enc.encode(channels.map(ch => ch.subarray(offset, end)));
+        if (out.length) oggParts.push(new Uint8Array(out));
+      }
+      const fin = enc.finalize();
+      if (fin.length) oggParts.push(new Uint8Array(fin));
+      const merged = mergeBytes(oggParts);
+
+      const pageSegments = merged[26];
+      let packetLength = 0;
+      for (let s = 0; s < pageSegments; s++) packetLength += merged[27 + s];
+      const pageSize = 27 + pageSegments + packetLength;
+      const packetStart = 27 + pageSegments;
+
+      if (merged[0] === 0x4f && merged[1] === 0x67 && merged[2] === 0x67 && merged[3] === 0x53 &&
+          merged[packetStart] === 0x01 && merged[packetStart + 1] === 0x76 && merged[packetStart + 2] === 0x6f) {
+        const targetSr = Math.round(originalSr * speed);
+        merged[packetStart + 12] = targetSr & 0xff;
+        merged[packetStart + 13] = (targetSr >>> 8) & 0xff;
+        merged[packetStart + 14] = (targetSr >>> 16) & 0xff;
+        merged[packetStart + 15] = (targetSr >>> 24) & 0xff;
+        merged[22] = 0; merged[23] = 0; merged[24] = 0; merged[25] = 0;
+        const newCrc = computeOggCrc(merged, 0, pageSize);
+        merged[22] = newCrc & 0xff;
+        merged[23] = (newCrc >>> 8) & 0xff;
+        merged[24] = (newCrc >>> 16) & 0xff;
+        merged[25] = (newCrc >>> 24) & 0xff;
+      }
+      return new Blob([merged], { type: 'audio/ogg' });
+    }
+
+    // Pengaman ukuran: part >20MB (kualitas ekstrem) dipecah dua & encode ulang.
+    async function encodePartWithGuard(startSample, endSample, depth) {
+      const blob = await encodeRange(startSample, endSample);
+      if (blob.size > SIZE_MAX_BYTES && depth < 2 && (endSample - startSample) > sampleRate) {
+        const mid = (startSample + endSample) >> 1;
+        return [
+          ...await encodePartWithGuard(startSample, mid, depth + 1),
+          ...await encodePartWithGuard(mid, endSample, depth + 1),
+        ];
+      }
+      return [blob];
+    }
+
+    const ranges = computePartRanges(rendered.length, originalSr, speed);
+    let blobs = [];
+    for (const r of ranges) blobs = blobs.concat(await encodePartWithGuard(r.start, r.end, 0));
+
+    const base = (item.displayName || item.file.name).replace(/\.[^/.]+$/, '');
+    const names = partNames(base, blobs.length);
+    return blobs.map((blob, i) => ({ blob, ...names[i] }));
   }
 
   window.convertAll = async function () {
