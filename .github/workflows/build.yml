@@ -32,9 +32,6 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             label: "macOS Apple Silicon"
-          - os: macos-13
-            target: x86_64-apple-darwin
-            label: "macOS Intel"
 
     runs-on: ${{ matrix.os }}
     name: Build (${{ matrix.label }})
