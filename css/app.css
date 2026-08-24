@@ -277,8 +277,8 @@ button:disabled{opacity:.45;cursor:not-allowed;}
 
 /* Dialog ringkasan upload multi-part */
 .parts-table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: .25rem; }
-.parts-table th, .parts-table td { padding: .35rem .5rem; border-bottom: 1px solid rgba(128,128,128,.25); text-align: left; word-break: break-all; }
+.parts-table th, .parts-table td { padding: .35rem .5rem; border-bottom: 1px solid var(--border); text-align: left; word-break: break-all; }
 .parts-table th { font-weight: 600; opacity: .75; }
 .pt-name { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pt-fail { color: #dc2626; font-weight: 600; }
+.pt-fail { color: var(--red-text); font-weight: 600; }
 .parts-hint { font-size: .8rem; opacity: .7; margin-top: .6rem; text-align: left; }

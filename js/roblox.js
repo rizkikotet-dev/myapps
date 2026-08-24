@@ -271,18 +271,18 @@ App.roblox = (() => {
   function showPartsSummary(item) {
     const parts = (item.roblox && item.roblox.parts) || [];
     if (parts.length < 2) return;
+    const isRejected = (p) => p.status === 'rejected' || /REJECTED|BLOCKED/i.test(p.moderation || '');
     const rows = parts.map((p, i) => {
-      const rejected = p.status === 'rejected' || /REJECTED|BLOCKED/i.test(p.moderation || '');
-      const modCell = !p.assetId
-        ? '<span class="pt-fail">✗ gagal</span>'
-        : (rejected ? '<span class="pt-fail">Ditolak ✗</span>'
-                    : U().escapeHtml(App.files.moderationLabel(p.moderation)));
+      const rejected = isRejected(p);
+      const modCell = rejected ? '<span class="pt-fail">Ditolak ✗</span>'
+                    : (!p.assetId ? '<span class="pt-fail">✗ gagal</span>'
+                                  : U().escapeHtml(App.files.moderationLabel(p.moderation)));
       return `<tr><td>${i + 1}</td><td class="pt-name">${U().escapeHtml(p.name)}</td><td>${
         p.assetId ? '<code>rbxassetid://' + U().escapeHtml(p.assetId) + '</code>'
                   : '<span class="pt-fail">✗ ' + U().escapeHtml((p.error || 'gagal').slice(0, 60)) + '</span>'
       }</td><td>${modCell}</td></tr>`;
     }).join('');
-    const idText = parts.filter(p => p.assetId && !(p.status === 'rejected' || /REJECTED|BLOCKED/i.test(p.moderation || ''))).map(p => 'rbxassetid://' + p.assetId).join('\n');
+    const idText = parts.filter(p => p.assetId && !isRejected(p)).map(p => 'rbxassetid://' + p.assetId).join('\n');
     if (typeof Swal === 'undefined') { U().copyText(idText); return; }
     Swal.fire(U().swalBase({
       title: 'Upload Multi-Part Selesai',
