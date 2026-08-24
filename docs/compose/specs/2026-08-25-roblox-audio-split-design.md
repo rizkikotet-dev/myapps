@@ -27,7 +27,7 @@ Base nama keluaran `Lagu` menghasilkan `Lagu - Part1.ogg`, `Lagu - Part2.ogg`, �
 ## [S6] Alur unduh & upload
 - Mode manual: semua part diunduh berurutan memakai mekanisme unduh existing.
 - Mode auto-upload: `uploadToRoblox` dipanggil per part berurutan; polling operasi & moderasi memakai rantai existing per part.
-- State baris file: `item.roblox.parts = [{name, assetId, status, moderation}]`, progres tampil sebagai `Part k/N — <aktivitas>`.
+- State baris file: `item.roblox.parts = [{name, assetId, status, moderation}]`, progres tampil sebagai `Part k/N · <aktivitas>`.
 - Kegagalan satu part TIDAK menghentikan part berikutnya; part gagal ditandai error, sisanya lanjut.
 
 ## [S7] Dialog ringkasan

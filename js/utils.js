@@ -93,5 +93,5 @@ App.utils = (() => {
 
   const debounce = (fn, ms = 150) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
-  return { fmtSize, sanitizeFilename, ytDlpCommand, escapeHtml, copyText, toast, confirmDialog, inputDialog, errorDialog, debounce };
+  return { fmtSize, sanitizeFilename, ytDlpCommand, escapeHtml, copyText, toast, confirmDialog, inputDialog, errorDialog, debounce, swalBase: base };
 })();

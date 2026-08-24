@@ -244,6 +244,8 @@ App.roblox = (() => {
     }
   }
 
+  // KONTRAK: uploadToRoblox TIDAK pernah throw — kegagalan dicatat di item.roblox;
+  // loop di bawah bergantung pada itu agar satu part gagal tak menghentikan sisanya.
   // Upload berurutan untuk satu file (bisa multi-part). Mengembalikan hasil per part.
   async function uploadParts(item, parts) {
     const results = [];
@@ -265,7 +267,28 @@ App.roblox = (() => {
     return results;
   }
 
-  async function showPartsSummary(item) { /* didefinisikan penuh di task berikutnya */ }
+  // Dialog ringkasan multi-part: tabel Part|Asset ID|Moderasi + copy daftar rbxassetid.
+  function showPartsSummary(item) {
+    const parts = (item.roblox && item.roblox.parts) || [];
+    if (parts.length < 2) return;
+    const rows = parts.map((p, i) =>
+      `<tr><td>${i + 1}</td><td class="pt-name">${U().escapeHtml(p.name)}</td><td>${
+        p.assetId ? '<code>rbxassetid://' + U().escapeHtml(p.assetId) + '</code>'
+                  : '<span class="pt-fail">✗ ' + U().escapeHtml((p.error || 'gagal').slice(0, 60)) + '</span>'
+      }</td></tr>`).join('');
+    const idText = parts.filter(p => p.assetId).map(p => 'rbxassetid://' + p.assetId).join('\n');
+    if (typeof Swal === 'undefined') { U().copyText(idText); return; }
+    Swal.fire(U().swalBase({
+      title: 'Upload Multi-Part Selesai',
+      html: `<table class="parts-table"><thead><tr><th>#</th><th>Nama</th><th>Asset ID</th></tr></thead><tbody>${rows}</tbody></table>
+             <p class="parts-hint">Susun ID berurutan di Roblox Studio agar penyambungan mulus. Moderasi berjalan otomatis — status update tanpa perlu aksi.</p>`,
+      showCancelButton: true,
+      confirmButtonText: 'Copy ID',
+      cancelButtonText: 'Tutup',
+      reverseButtons: true,
+      preConfirm: () => { U().copyText(idText); return false; },
+    }));
+  }
 
   return { checkRoblox, setRobloxStatus, uploadToRoblox, uploadParts, showPartsSummary, pollRobloxOperation };
 })();
