@@ -140,7 +140,13 @@ App.roblox = (() => {
           render(item); setRobloxStatus('⏳ Moderasi pending…', '');
           continue;
         }
-        if (pj.error) throw new Error(pj.error.message || JSON.stringify(pj.error));
+        if (pj.error) {
+          // error operasional Roblox BUKAN error jaringan — hentikan polling, tandai gagal
+          const m = String(pj.error.message || JSON.stringify(pj.error)).slice(0, 220);
+          item.roblox.status = 'error'; item.roblox.error = m;
+          render(item); setRobloxStatus(`✗ Upload gagal (operation): ${m}`, 'err'); U().toast('error', 'Upload Roblox ditolak');
+          return;
+        }
         if (pj.response) {
           const assetId = pj.response.assetId || pj.response.asset?.assetId || '';
           const mod = pj.response.moderationResult?.moderationState || '';

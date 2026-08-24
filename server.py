@@ -525,7 +525,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 intro = roblox_introspect(toks["access_token"], cfg)
                 out["introspect"] = {k: intro.get(k) for k in ("active", "scope", "exp", "iat", "aud", "client_id")}
                 if not intro.get("active"):
-                    atok, err = force_refresh()
+                    atok, err = get_valid_access_token(force=True)
                     out["force_refresh"] = "ok" if not err else err
                     if not err:
                         toks = load_roblox_tokens()
@@ -596,13 +596,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not op_id:
                 send_json(self, 400, {"error": "Missing operation id"})
                 return
-            atok, err = get_valid_access_token()
-            if err:
-                send_json(self, 401, {"error": err})
-                return
+            cfg_o = load_roblox_config() or {}
+            api_key_o = cfg_o.get("api_key")
+            poll_headers = {}
+            if api_key_o:
+                poll_headers["x-api-key"] = api_key_o
+            else:
+                atok, err = get_valid_access_token()
+                if err:
+                    send_json(self, 401, {"error": err})
+                    return
+                poll_headers["Authorization"] = f"Bearer {atok}"
             try:
                 poll_req = urllib.request.Request(f"https://apis.roblox.com/assets/v1/operations/{op_id}",
-                    headers={"Authorization": f"Bearer {atok}"})
+                    headers=poll_headers)
                 with urllib.request.urlopen(poll_req, timeout=15) as pr:
                     poll = json.loads(pr.read().decode())
                 send_json(self, 200, poll)
@@ -853,7 +860,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     except Exception as ie:
                         print(f"[roblox] introspect gagal: {ie}", flush=True)
                         intro_summary = f"introspect error: {ie}"
-                    atok2, err2 = force_refresh()
+                    atok2, err2 = get_valid_access_token(force=True)
                     if not err2:
                         try:
                             req2 = build_asset_request(atok2)
