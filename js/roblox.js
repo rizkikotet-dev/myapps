@@ -271,16 +271,22 @@ App.roblox = (() => {
   function showPartsSummary(item) {
     const parts = (item.roblox && item.roblox.parts) || [];
     if (parts.length < 2) return;
-    const rows = parts.map((p, i) =>
-      `<tr><td>${i + 1}</td><td class="pt-name">${U().escapeHtml(p.name)}</td><td>${
+    const rows = parts.map((p, i) => {
+      const rejected = p.status === 'rejected' || /REJECTED|BLOCKED/i.test(p.moderation || '');
+      const modCell = !p.assetId
+        ? '<span class="pt-fail">✗ gagal</span>'
+        : (rejected ? '<span class="pt-fail">Ditolak ✗</span>'
+                    : U().escapeHtml(App.files.moderationLabel(p.moderation)));
+      return `<tr><td>${i + 1}</td><td class="pt-name">${U().escapeHtml(p.name)}</td><td>${
         p.assetId ? '<code>rbxassetid://' + U().escapeHtml(p.assetId) + '</code>'
                   : '<span class="pt-fail">✗ ' + U().escapeHtml((p.error || 'gagal').slice(0, 60)) + '</span>'
-      }</td></tr>`).join('');
-    const idText = parts.filter(p => p.assetId).map(p => 'rbxassetid://' + p.assetId).join('\n');
+      }</td><td>${modCell}</td></tr>`;
+    }).join('');
+    const idText = parts.filter(p => p.assetId && !(p.status === 'rejected' || /REJECTED|BLOCKED/i.test(p.moderation || ''))).map(p => 'rbxassetid://' + p.assetId).join('\n');
     if (typeof Swal === 'undefined') { U().copyText(idText); return; }
     Swal.fire(U().swalBase({
       title: 'Upload Multi-Part Selesai',
-      html: `<table class="parts-table"><thead><tr><th>#</th><th>Nama</th><th>Asset ID</th></tr></thead><tbody>${rows}</tbody></table>
+      html: `<table class="parts-table"><thead><tr><th>#</th><th>Nama</th><th>Asset ID</th><th>Moderasi</th></tr></thead><tbody>${rows}</tbody></table>
              <p class="parts-hint">Susun ID berurutan di Roblox Studio agar penyambungan mulus. Moderasi berjalan otomatis — status update tanpa perlu aksi.</p>`,
       showCancelButton: true,
       confirmButtonText: 'Copy ID',
