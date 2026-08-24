@@ -51,7 +51,7 @@ App.files = (() => {
 
   // ── render ──
   function renderRows() {
-    const { fcEl, rowsEl } = E();
+    const { fc: fcEl, rows: rowsEl } = E();
     fcEl.textContent = S().files.length;
     rowsEl.innerHTML = '';
     S().files.forEach((item, i) => {
