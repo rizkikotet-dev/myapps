@@ -20,7 +20,9 @@
       "WebFetch(domain:github.com)",
       "Bash(npx playwright *)",
       "Bash(node *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(mkdir -p 'C:\\\\Users\\\\rizkivalency/.tauri')",
+      "Bash(npx tauri *)"
     ]
   }
 }

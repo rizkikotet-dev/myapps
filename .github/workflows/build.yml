@@ -127,8 +127,16 @@ jobs:
       - name: Install JavaScript Dependencies
         run: npm ci
 
-      - name: Build Tauri App
-        run: npx tauri build --target ${{ matrix.target }}
+      - name: Build Tauri App (signed for updater)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        shell: bash
+        run: |
+          # private key updater dari secret repo (minisign, tanpa password)
+          echo "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" > "$RUNNER_TEMP/updater.key"
+          export TAURI_SIGNING_PRIVATE_KEY="$(cat "$RUNNER_TEMP/updater.key")"
+          npx tauri build --target ${{ matrix.target }}
+          rm -f "$RUNNER_TEMP/updater.key"
 
       - name: Upload Build Artifacts (Debug/Non-Release)
         if: env.VERSION == ''
@@ -142,6 +150,29 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Collect updater artifacts
+        if: env.VERSION != ''
+        shell: bash
+        run: |
+          # kumpulkan latest.json per-platform (nama file unik agar tidak saling timpa)
+          mkdir -p updater-out
+          found=0
+          for f in src-tauri/target/*/release/bundle/updater/latest.json; do
+            [ -f "$f" ] || continue
+            found=1
+            plat=$(basename "$(dirname "$(dirname "$(dirname "$f")")")")
+            cp "$f" "updater-out/latest-${plat}.json"
+          done
+          [ "$found" = "1" ] || echo "::warning::Tidak ada latest.json — updater artifacts kosong?"
+
+      - name: Upload updater JSON artifact
+        if: env.VERSION != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-json-${{ matrix.target }}
+          path: updater-out/*.json
+          if-no-files-found: warn
+
       - name: Publish GitHub Release
         if: env.VERSION != ''
         uses: softprops/action-gh-release@v2
@@ -154,3 +185,4 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
+            updater-out/*.json

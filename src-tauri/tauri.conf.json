@@ -24,9 +24,18 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDcyQkJFQ0NEODVGMUY4NwpSV1NISDEvWXpMNHJCODNON3BpTjc5VjgxOWNIOGtqOFg0S3cxN01XSkR6TzRzODl3Mlo1T29Bcwo=",
+      "endpoints": [
+        "https://github.com/rizkikotet-dev/myapps/releases/latest/download/latest.json"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "category": "Music",
     "shortDescription": "Batch audio -> OGG hidden-speed converter",
     "macOS": {

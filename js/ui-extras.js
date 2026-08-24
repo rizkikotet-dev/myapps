@@ -96,4 +96,83 @@
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
+
+  /* ── update checker (desktop/Tauri saja) ───────────────────────
+     Plugin updater Tauri v2: cek latest.json di GitHub Releases,
+     unduh + install silent, lalu relaunch via tauri-plugin-process. */
+  var invoke = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
+  if (!invoke) return; // browser biasa (server.py murni): tidak ada updater
+
+  var btn = document.createElement('button');
+  btn.className = 'btn-outline update-btn';
+  btn.innerHTML = '<i class="ti ti-refresh"></i> Cek Update';
+  btn.addEventListener('click', checkUpdate);
+  // taruh di brand-row header — selalu terlihat (bukan di #file-list yang tersembunyi)
+  var anchor = document.querySelector('.brand-row');
+  if (anchor) anchor.appendChild(btn);
+
+  function setBtn(html) { btn.innerHTML = html; }
+  function busy(on, label) { btn.disabled = on; setBtn('<i class="ti ti-refresh"></i> ' + label); }
+
+  async function checkUpdate() {
+    try {
+      busy(true, 'Memeriksa…');
+      var update = await invoke('plugin:updater|check', { options: {} });
+      if (!update || !update.available) {
+        await Swal.fire({ title: 'Tidak ada update', text: 'Aplikasi sudah versi terbaru.', icon: 'success' });
+        return;
+      }
+      var go = await Swal.fire({
+        title: 'Update tersedia',
+        text: 'Versi ' + update.version + ' siap diinstall. Unduh, install otomatis, lalu restart aplikasi?',
+        icon: 'question', showCancelButton: true,
+        confirmButtonText: 'Install & Restart', cancelButtonText: 'Nanti',
+        buttonsStyling: false,
+      });
+      if (!go.isConfirmed) return;
+      // downloadAndInstall via plugin command + Channel untuk progress
+      var Channel = window.__TAURI__.core.Channel;
+      var ch = new Channel();
+      var lastPct = -1;
+      ch.onmessage = function (evt) {
+        if (evt && evt.event === 'Started' && evt.data.contentLength) {
+          ch._total = evt.data.contentLength;
+        } else if (evt && evt.event === 'Progress') {
+          var pct = ch._total ? Math.min(99, Math.round((evt.data.chunkLength / ch._total) * 100)) : null;
+          if (pct !== null && pct !== lastPct) { lastPct = pct; busy(true, 'Mengunduh ' + pct + '%'); }
+        } else if (evt && evt.event === 'Finished') {
+          busy(true, 'Installing…');
+        }
+      };
+      await invoke('plugin:updater|download_and_install', { onEvent: ch });
+      busy(true, 'Restarting…');
+      await window.__TAURI__.process.relaunch();
+    } catch (e) {
+      console.error('[update]', e);
+      setBtn('<i class="ti ti-alert-circle"></i> Gagal');
+      setTimeout(function () { setBtn('<i class="ti ti-refresh"></i> Cek Update'); }, 4000);
+      if (typeof Swal !== 'undefined' && !(Swal.isVisible && Swal.isVisible())) {
+        Swal.fire({ title: 'Update gagal', text: String(e).slice(0, 200), icon: 'error' });
+      }
+    }
+  }
+
+  // cek otomatis sekali saat boot (diam jika tak ada update)
+  setTimeout(function () {
+    invoke('plugin:updater|check', { options: {} }).then(function (u) {
+      if (u && u.available) checkUpdateFromAuto(u);
+    }).catch(function () {});
+  }, 5000);
+
+  function checkUpdateFromAuto(update) {
+    Swal.fire({
+      title: 'Update tersedia',
+      text: 'Versi ' + update.version + ' tersedia. Install sekarang?',
+      icon: 'info', showCancelButton: true,
+      confirmButtonText: 'Update Sekarang', cancelButtonText: 'Nanti',
+      buttonsStyling: false,
+    }).then(function (go) {
+      if (go.isConfirmed) checkUpdate();
+    });
+  }
 })();

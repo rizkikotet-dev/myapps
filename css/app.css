@@ -121,6 +121,7 @@ button:disabled{opacity:.45;cursor:not-allowed;}
 #file-list{margin:1.75rem 0;}
 .fl-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
 .fl-header p{font-family:var(--font-display);font-size:13.5px;font-weight:600;}
+.update-btn{padding:6px 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px;margin-left:auto;}
 .file-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:8px;background:var(--bg2);transition:border-color .2s;}
 .file-row:hover{border-color:var(--border2);}
 .file-row .icon{font-size:22px;color:var(--accent);flex-shrink:0;}
