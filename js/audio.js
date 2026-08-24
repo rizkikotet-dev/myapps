@@ -91,6 +91,27 @@ App.audio = (() => {
     }
   };
 
+  // ── batas Roblox & pemecahan part ──
+  const PART_MAX_EFF_SEC = 410;   // margin aman di bawah batas Roblox 7:00 (durasi efektif)
+  const SIZE_MAX_BYTES = 20 * 1024 * 1024;
+
+  // Durasi efektif yg dilihat Roblox = samples/(sr*speed) akibat header-hack sample rate.
+  function computePartRanges(totalSamples, sampleRate, speed) {
+    const spp = Math.round(sampleRate * speed * PART_MAX_EFF_SEC);
+    if (totalSamples <= spp) return [{ start: 0, end: totalSamples }];
+    const ranges = [];
+    for (let s = 0; s < totalSamples; s += spp) {
+      ranges.push({ start: s, end: Math.min(s + spp, totalSamples) });
+    }
+    return ranges;
+  }
+
+  function partNames(base, count) {
+    return Array.from({ length: count }, (_, i) => count === 1
+      ? { fileName: base + '.ogg', displayName: base }
+      : { fileName: `${base} - Part${i + 1}.ogg`, displayName: `${base} - Part${i + 1}` });
+  }
+
   // ── konversi inti ──
   async function convertOne(item, speed, gainLinear, quality) {
     const ctx = getCtx();
@@ -227,5 +248,5 @@ App.audio = (() => {
     E().convBtn.disabled = false; E().prevBtn.disabled = false;
   };
 
-  return { getCtx, stopPreview, convertOne };
+  return { getCtx, stopPreview, convertOne, computePartRanges, partNames, PART_MAX_EFF_SEC, SIZE_MAX_BYTES };
 })();
