@@ -122,26 +122,66 @@ button:disabled{opacity:.45;cursor:not-allowed;}
 .fl-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
 .fl-header p{font-family:var(--font-display);font-size:13.5px;font-weight:600;}
 .update-btn{padding:6px 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px;margin-left:auto;}
-.file-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:8px;background:var(--bg2);transition:border-color .2s;}
-.file-row:hover{border-color:var(--border2);}
-.file-row .icon{font-size:22px;color:var(--accent);flex-shrink:0;}
+.file-row{position:relative;display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px;background:var(--bg2);transition:border-color .2s,box-shadow .25s,transform .25s;overflow:hidden;}
+.file-row:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:var(--shadow-md);}
+.file-row.active{border-color:rgba(242,163,60,.35);}
+.file-row .ficon{width:40px;height:40px;border-radius:11px;background:var(--bg3);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .25s,border-color .25s;}
+.file-row.active .ficon{background:var(--blue-bg);border-color:rgba(111,168,245,.35);}
+.file-row .icon{font-size:20px;color:var(--accent);}
+.file-row.active .icon{color:var(--blue-text);animation:ficonpulse 1.4s ease-in-out infinite;}
+@keyframes ficonpulse{0%,100%{opacity:1;}50%{opacity:.45;}}
 .file-row .finfo{flex:1;min-width:0;}
 .file-row .fname{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .file-row .fnew{font-size:11.5px;color:var(--text2);margin-top:3px;font-family:var(--font-mono);}
 .file-row .fnew b{color:var(--text);font-weight:600;}
+.fside{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex-shrink:0;}
+.fbadges{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+.factions{display:flex;gap:2px;}
 .badge{display:inline-block;font-family:var(--font-mono);font-size:10px;padding:4px 9px;border-radius:99px;font-weight:600;white-space:nowrap;letter-spacing:.04em;}
 .bw{background:var(--bg3);color:var(--text2);}
 .bp{background:var(--blue-bg);color:var(--blue-text);}
 .bd{background:var(--green-bg);color:var(--green-text);}
 .be{background:var(--red-bg);color:var(--red-text);}
-.rblx-badge{display:inline-block;font-family:var(--font-mono);font-size:9.5px;padding:3px 8px;border-radius:99px;font-weight:600;white-space:nowrap;letter-spacing:.04em;}
+.rblx-badge{display:inline-block;font-family:var(--font-mono);font-size:9.5px;padding:3px 8px;border-radius:99px;font-weight:600;white-space:nowrap;letter-spacing:.04em;font-variant-numeric:tabular-nums;}
 .rblx-badge.bp,.rblx-badge.rblx-up,.rblx-badge.rblx-pend{background:var(--blue-bg);color:var(--blue-text);}
 .rblx-badge.bd,.rblx-badge.rblx-ok{background:var(--green-bg);color:var(--green-text);}
 .rblx-badge.be,.rblx-badge.rblx-err{background:var(--red-bg);color:var(--red-text);}
 .rblx-badge.bw{background:var(--bg3);color:var(--text2);}
+.rblx-badge.rblx-up{position:relative;overflow:hidden;}
+.rblx-badge.rblx-up::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(138,184,247,.22) 50%,transparent 70%);animation:rblxshine 1.6s linear infinite;}
+@keyframes rblxshine{from{transform:translateX(-100%);}to{transform:translateX(100%);}}
 .icon-btn{background:none;border:none;padding:5px;color:var(--text3);border-radius:6px;cursor:pointer;}
 .icon-btn:hover{color:var(--text);background:var(--bg3);}
 .icon-btn i{font-size:17px;}
+
+/* ── baris status roblox (moderasi) ── */
+.rline{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);margin-top:5px;font-family:var(--font-mono);line-height:1.4;}
+.rline.err{color:var(--red-text);}
+.rdot{width:6px;height:6px;border-radius:99px;background:var(--text3);flex-shrink:0;}
+.rdot.ok{background:var(--green-text);box-shadow:0 0 7px var(--green-text);}
+.rdot.err{background:var(--red-text);}
+.rdot.pend{background:var(--accent);animation:rdotpulse 1.3s ease-in-out infinite;}
+@keyframes rdotpulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.35;transform:scale(.7);}}
+.rmod{font-weight:600;color:var(--text2);}
+.rmod.ok{color:var(--green-text);}
+.rmod.err{color:var(--red-text);}
+.rmod.pend{color:var(--accent);}
+.rwait{color:var(--text2);font-variant-numeric:tabular-nums;}
+.adots i{font-style:normal;animation:adots 1.4s infinite;}
+.adots i:nth-child(2){animation-delay:.2s;}
+.adots i:nth-child(3){animation-delay:.4s;}
+@keyframes adots{0%,100%{opacity:.15;}50%{opacity:1;}}
+
+/* ── strip progres per-file ── */
+.rprog-row{display:flex;align-items:center;gap:8px;margin-top:7px;}
+.rprog{position:relative;flex:1;height:4px;background:var(--bg3);border-radius:99px;overflow:hidden;}
+.rprog.poll{background:var(--studio-dim);}
+.rprog-fill{height:100%;width:0%;border-radius:99px;background:var(--accent);transition:width .2s ease;}
+.rprog-fill.det{background:linear-gradient(90deg,var(--accent),var(--accent-hover));box-shadow:0 0 8px rgba(242,163,60,.5);}
+.rprog.poll .rprog-fill{background:var(--studio);}
+.rprog.indet .rprog-fill{width:32% !important;transition:none;animation:rindet 1.15s ease-in-out infinite;}
+@keyframes rindet{from{margin-left:-34%;}to{margin-left:102%;}}
+.rpct{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--accent);min-width:34px;text-align:right;font-variant-numeric:tabular-nums;}
 
 /* ── progress & status ── */
 .prog-wrap{margin-bottom:1.5rem;}

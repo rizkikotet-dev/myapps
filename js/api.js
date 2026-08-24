@@ -97,15 +97,29 @@ App.api = (() => {
     try { await fetch(S().backendUrl + '/api/roblox/logout', { method: 'POST' }); } catch (_) {}
   };
 
-  async function robloxUpload(blob, filename, displayName) {
-    const fd = new FormData();
-    fd.append('fileContent', blob, filename);
-    fd.append('displayName', displayName);
-    const qs = `?filename=${encodeURIComponent(filename)}&displayName=${encodeURIComponent(displayName)}`;
-    const r = await fetch(S().backendUrl + '/api/roblox/upload' + qs, { method: 'POST', body: fd });
-    const j = await r.json().catch(async () => ({ error: await r.text().catch(() => '') }));
-    if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
-    return j;
+  // XHR (bukan fetch) agar event upload.onprogress tersedia → progres realtime
+  function robloxUpload(blob, filename, displayName, onProgress) {
+    return new Promise((resolve, reject) => {
+      const fd = new FormData();
+      fd.append('fileContent', blob, filename);
+      fd.append('displayName', displayName);
+      const qs = `?filename=${encodeURIComponent(filename)}&displayName=${encodeURIComponent(displayName)}`;
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', S().backendUrl + '/api/roblox/upload' + qs);
+      if (onProgress) {
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded, e.total); };
+      }
+      xhr.onload = () => {
+        let j = {};
+        try { j = JSON.parse(xhr.responseText); }
+        catch (_) { j = { error: (xhr.responseText || '').slice(0, 300) }; }
+        if (xhr.status >= 200 && xhr.status < 300) resolve(j);
+        else reject(new Error(j.error || `HTTP ${xhr.status}`));
+      };
+      xhr.onerror = () => reject(new Error('Koneksi ke server terputus saat upload'));
+      xhr.onabort = () => reject(new Error('Upload dibatalkan'));
+      xhr.send(fd);
+    });
   }
   const robloxOperation = (opId) => getJSON('/api/roblox/operations/' + encodeURIComponent(opId));
   const robloxAsset     = (assetId) => getJSON('/api/roblox/asset/' + encodeURIComponent(assetId));

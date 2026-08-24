@@ -11,13 +11,18 @@ App.files = (() => {
   const displayNameFor = (item) => item.displayName || item.file.name;
   const outNameFor = (item) => displayNameFor(item).replace(/\.[^/.]+$/, '') + '.ogg';
   const baseName = (n) => (n || '').replace(/\.[^/.]+$/, '');
+  const newUid = () => 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+  function newItem(file, displayName, source) {
+    return { uid: newUid(), file, status: 'wait', roblox: { status: 'idle' }, displayName, source };
+  }
 
   // ── badges ──
   function rblxBadge(item) {
     const r = item.roblox || { status: 'idle' };
     if (!r.status || r.status === 'idle' || r.status === 'skip') return '';
     const map = {
-      uploading: ['rblx-up', 'Uploading…'],
+      uploading: ['rblx-up', 'Upload ' + (typeof r.progress === 'number' ? r.progress : 0) + '%'],
       polling: ['rblx-pend', 'Pending…'],
       done: ['rblx-ok', '✓ Roblox'],
       rejected: ['rblx-err', '✗ Ditolak'],
@@ -28,8 +33,9 @@ App.files = (() => {
     if (r.assetId) extra = ' ID ' + r.assetId;
     else if (r.operationId) extra = ' #' + r.operationId.slice(0, 6);
     else if (r.msg) extra = ' ' + r.msg.slice(0, 28);
+    const live = r.status === 'uploading' ? ` data-rbadge="${item.uid}"` : '';
     const title = U().escapeHtml((r.error || r.msg || '') + (r.assetId ? ' — Asset ID ' + r.assetId : ''));
-    return `<span class="rblx-badge ${cls}" title="${title}">${label}${U().escapeHtml(extra)}</span>`;
+    return `<span class="rblx-badge ${cls}"${live} title="${title}">${label}${U().escapeHtml(extra)}</span>`;
   }
 
   function moderationLabel(st) {
@@ -37,6 +43,38 @@ App.files = (() => {
     if (/APPROVED/i.test(st)) return 'Disetujui ✓';
     if (/REJECTED|BLOCKED/i.test(st)) return 'Ditolak ✗';
     return String(st).replace(/MODERATION_STATE_/g, '') + '…';
+  }
+
+  // ── baris status roblox (moderasi / error / antrian) ──
+  function rInfoHtml(item) {
+    const r = item.roblox || {};
+    if (r.assetId) {
+      const st = r.moderation || '';
+      const cls = /APPROVED/i.test(st) ? 'ok' : (/REJECTED|BLOCKED/i.test(st) ? 'err' : 'pend');
+      const dots = cls === 'pend' ? '<span class="adots"><i>.</i><i>.</i><i>.</i></span>' : '';
+      return `<div class="rline"><span class="rdot ${cls}"></span>Moderasi Roblox: <b class="rmod ${cls}" data-rmod="${item.uid}">${moderationLabel(st)}${dots}</b></div>`;
+    }
+    if (r.error) {
+      return `<div class="rline err"><span class="rdot err"></span><span data-rmod="${item.uid}">${U().escapeHtml(r.error.slice(0, 110))}</span></div>`;
+    }
+    if (r.status === 'polling') {
+      return `<div class="rline"><span class="rdot pend"></span><span data-rmod="${item.uid}">Menunggu antrian Roblox<span class="adots"><i>.</i><i>.</i><i>.</i></span></span></div>`;
+    }
+    if (r.status === 'uploading') {
+      return `<div class="rline"><span class="rdot pend"></span>Mengunggah ke Roblox…</div>`;
+    }
+    return '';
+  }
+
+  // ── strip progres per-file ──
+  function rowProgressHtml(item) {
+    const r = item.roblox || {};
+    const busy = item.status === 'proc' || r.status === 'uploading' || r.status === 'polling';
+    if (!busy) return '';
+    const det = r.status === 'uploading' && typeof r.progress === 'number';
+    const pct = det ? r.progress : 0;
+    const mode = r.status === 'polling' ? ' poll' : '';
+    return `<div class="rprog-row"><div class="rprog${det ? '' : ' indet'}${mode}"><div class="rprog-fill${det ? ' det' : ''}" data-rfill="${item.uid}" style="width:${pct}%"></div></div>${det ? `<span class="rpct" data-rpct="${item.uid}">${pct}%</span>` : ''}</div>`;
   }
 
   function updateConvButton() {
@@ -58,35 +96,60 @@ App.files = (() => {
       const bc = { wait: 'bw', proc: 'bp', done: 'bd', err: 'be' }[item.status];
       const bl = { wait: 'Menunggu', proc: 'Memproses…', done: 'Selesai', err: 'Error' }[item.status];
       const rb = rblxBadge(item);
-      const r = item.roblox || {};
-      let rInfo = '';
-      if (r.assetId) {
-        const st = r.moderation || '';
-        const color = /APPROVED/i.test(st) ? 'var(--green)' : (/REJECTED|BLOCKED/i.test(st) ? 'var(--red)' : 'var(--orange)');
-        rInfo = `<div style="font-size:.7rem;margin-top:.15rem;color:var(--text3)">Roblox: <a href="https://create.roblox.com/dashboard/creations?activeTab=audio" target="_blank" style="color:var(--accent);font-weight:600">ID ${U().escapeHtml(r.assetId)}</a> · Moderasi: <b style="color:${color}">${moderationLabel(st)}</b></div>`;
-      } else if (r.error) {
-        rInfo = `<div style="font-size:.7rem;margin-top:.15rem;color:var(--red)">${U().escapeHtml(r.error.slice(0, 110))}</div>`;
-      } else if (r.status === 'polling') {
-        rInfo = `<div style="font-size:.7rem;margin-top:.15rem;color:var(--text3)">Menunggu moderasi Roblox…</div>`;
-      }
       const row = document.createElement('div');
-      row.className = 'file-row';
+      row.className = 'file-row' + ((item.status === 'proc' || item.roblox?.status === 'uploading' || item.roblox?.status === 'polling') ? ' active' : '');
       row.innerHTML = `
-        <i class="ti ti-file-music icon"></i>
+        <span class="ficon"><i class="ti ti-file-music icon"></i></span>
         <div class="finfo">
           <div class="fname" title="${U().escapeHtml(displayNameFor(item))}">${U().escapeHtml(displayNameFor(item))}</div>
           <div class="fnew">→ <b>${U().escapeHtml(outNameFor(item))}</b> · ${U().fmtSize(item.file.size)}</div>
-          ${rInfo}
+          ${rInfoHtml(item)}
+          ${rowProgressHtml(item)}
         </div>
-        <span class="badge ${bc}">${bl}</span>
-        ${rb}
-        <button class="icon-btn" data-action="rename" data-i="${i}" title="Rename"><i class="ti ti-pencil"></i></button>
-        <button class="icon-btn" data-action="remove" data-i="${i}" title="Hapus"><i class="ti ti-x"></i></button>`;
+        <div class="fside">
+          <div class="fbadges">
+            <span class="badge ${bc}">${bl}</span>
+            ${rb}
+          </div>
+          <div class="factions">
+            <button class="icon-btn" data-action="rename" data-i="${i}" title="Rename"><i class="ti ti-pencil"></i></button>
+            <button class="icon-btn" data-action="remove" data-i="${i}" title="Hapus"><i class="ti ti-x"></i></button>
+          </div>
+        </div>`;
       row.querySelector('[data-action="rename"]').addEventListener('click', () => renameFile(i));
       row.querySelector('[data-action="remove"]').addEventListener('click', () => removeFile(i));
       rowsEl.appendChild(row);
     });
     updateConvButton();
+  }
+
+  // update progres upload tanpa render ulang seluruh daftar (realtime & mulus)
+  function updateRowProgress(item) {
+    if (!item || !item.uid) return;
+    const r = item.roblox || {};
+    if (typeof r.progress !== 'number') return;
+    const fill = document.querySelector(`[data-rfill="${item.uid}"]`);
+    if (fill) {
+      fill.parentElement.classList.remove('indet');
+      fill.classList.add('det');
+      fill.style.width = r.progress + '%';
+    }
+    const badge = document.querySelector(`[data-rbadge="${item.uid}"]`);
+    if (badge) badge.textContent = `Upload ${r.progress}%`;
+    let pct = document.querySelector(`[data-rpct="${item.uid}"]`);
+    if (!pct && fill) {
+      pct = document.createElement('span');
+      pct.className = 'rpct';
+      pct.dataset.rpct = item.uid;
+      fill.parentElement.parentElement.appendChild(pct);
+    }
+    if (pct) pct.textContent = r.progress + '%';
+  }
+
+  function updateRowMeta(item, html) {
+    if (!item || !item.uid) return;
+    const el = document.querySelector(`[data-rmod="${item.uid}"]`);
+    if (el) el.innerHTML = html;
   }
 
   function markListVisible() {
@@ -101,7 +164,7 @@ App.files = (() => {
     for (const f of flist) {
       if (!f.type.startsWith('audio/')) continue;
       if (S().files.some(x => x.file.name === f.name && x.file.size === f.size)) continue;
-      S().files.push({ file: f, status: 'wait', roblox: { status: 'idle' }, displayName: f.name });
+      S().files.push(newItem(f, f.name));
       if (S().backendOnline) App.api.uploadTmp(f);
     }
     renderRows(); markListVisible();
@@ -111,7 +174,7 @@ App.files = (() => {
     const clean = U().sanitizeFilename(filename);
     if (S().files.some(x => x.file.name === clean && x.file.size === blob.size)) return null;
     const file = new File([blob], clean, { type: blob.type || 'audio/mpeg' });
-    S().files.push({ file, status: 'wait', roblox: { status: 'idle' }, displayName: clean, source });
+    S().files.push(newItem(file, clean, source));
     renderRows(); markListVisible();
     return clean;
   }
@@ -189,7 +252,7 @@ App.files = (() => {
           if (!br.ok) continue;
           const blob = await br.blob();
           const file = new File([blob], f.name, { type: blob.type || 'audio/mpeg' });
-          S().files.push({ file, status: 'wait', roblox: { status: 'idle' }, displayName: f.name });
+          S().files.push(newItem(file, f.name));
           added++;
         } catch (_) {}
       }
@@ -199,7 +262,7 @@ App.files = (() => {
 
   return {
     addFiles, addFileFromBlob, renameFile, removeFile, clearAll,
-    loadTmpFiles, renderRows, updateConvButton,
+    loadTmpFiles, renderRows, updateConvButton, updateRowProgress, updateRowMeta,
     displayNameFor, outNameFor, moderationLabel,
   };
 })();

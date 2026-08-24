@@ -111,6 +111,7 @@ App.roblox = (() => {
 
   // ── upload + polling ──
   async function pollRobloxAudit(item, assetId) {
+    const t0 = Date.now();
     for (let i = 0; i < App.CONFIG.AUDIT_MAX_TRIES; i++) {
       await new Promise(r => setTimeout(r, App.CONFIG.AUDIT_INTERVAL_MS));
       try {
@@ -122,6 +123,9 @@ App.roblox = (() => {
           if (/APPROVED/i.test(st)) { setRobloxStatus(`✓ Disetujui — Asset ID ${assetId}`, 'ok'); U().toast('success', `${aj.displayName || 'Audio'} disetujui Roblox`); return; }
           if (/REJECTED|BLOCKED/i.test(st)) { item.roblox.status = 'rejected'; App.files.renderRows(); setRobloxStatus(`✗ Ditolak ${st}`, 'err'); return; }
           setRobloxStatus(`⏳ Reviewing ID ${assetId}…`, '');
+        } else {
+          const s = Math.round((Date.now() - t0) / 1000);
+          App.files.updateRowMeta(item, `Reviewing… <span class="rwait">${s}s</span><span class="adots"><i>.</i><i>.</i><i>.</i></span>`);
         }
       } catch (_) {}
     }
@@ -129,15 +133,19 @@ App.roblox = (() => {
 
   async function pollRobloxOperation(item, operationId) {
     item.roblox.status = 'polling';
+    item.roblox.progress = null;
     item.roblox.operationId = operationId;
     render(item);
+    const t0 = Date.now();
     for (let i = 0; i < App.CONFIG.POLL_OP_MAX_TRIES; i++) {
       await new Promise(r => setTimeout(r, App.CONFIG.POLL_OP_INTERVAL_MS));
       try {
         const pj = await App.api.robloxOperation(operationId);
         if (!pj.done) {
+          const s = Math.round((Date.now() - t0) / 1000);
           item.roblox.msg = `Pending… (${i + 1})`;
-          render(item); setRobloxStatus('⏳ Moderasi pending…', '');
+          App.files.updateRowMeta(item, `Menunggu antrian Roblox <span class="rwait">${s}s</span><span class="adots"><i>.</i><i>.</i><i>.</i></span>`);
+          setRobloxStatus('⏳ Moderasi pending…', '');
           continue;
         }
         if (pj.error) {
@@ -189,11 +197,21 @@ App.roblox = (() => {
       return;
     }
 
-    if (item) { item.roblox = { status: 'uploading', msg: 'Uploading…' }; App.files.renderRows(); }
-    setRobloxStatus(`Uploading ${filename} ke Roblox…`, '');
+    if (item) {
+      item.roblox = { status: 'uploading', msg: 'Uploading…', progress: 0 };
+      App.files.renderRows();
+    }
+    setRobloxStatus(`Uploading ${filename} ke Roblox… 0%`, '');
 
     try {
-      const j = await App.api.robloxUpload(blob, filename, displayName);
+      const j = await App.api.robloxUpload(blob, filename, displayName, (loaded, total) => {
+        const pct = Math.min(100, Math.round((loaded / total) * 100));
+        if (item) {
+          item.roblox.progress = pct;
+          App.files.updateRowProgress(item);
+        }
+        setRobloxStatus(`Uploading ${filename} ke Roblox… ${pct}% (${U().fmtSize(loaded)}/${U().fmtSize(total)})`, '');
+      });
       const opId = j.operationId || (j.operation ? String(j.operation).split('/').pop() : null);
       if (j.asset?.assetId) {
         if (item) {
