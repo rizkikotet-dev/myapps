@@ -83,6 +83,7 @@ jobs:
           PY
 
       - name: Change Version Tauri Config
+        shell: bash
         run: |
           if [ -n "${{ env.VERSION }}" ]; then
             echo "Mengubah versi di tauri.conf.json menjadi ${{ env.VERSION }}"
