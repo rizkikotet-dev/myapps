@@ -1,30 +1,32 @@
 /* ============================================================
-   base.css — token sistem desain, reset, kerangka halaman
-   Identitas: "instrumen studio" — panel navy-slate, amber hi-fi,
-   sian untuk sisi Roblox Studio. Angka & kode selalu Plex Mono.
+   base.css — token sistem desain, reset, kerangka app shell
+   Identitas: rak instrumen studio — panel navy-slate flat,
+   amber hi-fi (sisi aplikasi), sian (sisi Roblox Studio).
+   Angka & kode selalu IBM Plex Mono. Tanpa glow dekoratif;
+   glow hanya pada indikator LED status.
    ============================================================ */
 @import url('https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 
 :root{
-  /* permukaan */
-  --bg:#12151c;          /* halaman */
-  --bg1:#181c25;         /* kartu */
-  --bg2:#1e232e;         /* panel */
-  --bg3:#262c39;         /* inset / track */
-  --text:#e9edf5;
-  --text2:#9aa3b6;
-  --text3:#626b80;
+  /* permukaan — rak gelap biru-hitam */
+  --bg:#0f1219;          /* halaman */
+  --bg1:#151a24;         /* shell / kartu */
+  --bg2:#1a212d;         /* panel */
+  --bg3:#232c3b;         /* inset / track */
+  --text:#eaedf5;
+  --text2:#a6afc4;
+  --text3:#828da3;
   --border:rgba(255,255,255,.07);
-  --border2:rgba(255,255,255,.14);
+  --border2:rgba(255,255,255,.15);
 
   /* dua dunia: amber = aplikasi ini, sian = Roblox Studio */
   --accent:#f2a33c;
   --accent-hover:#ffb95c;
   --on-accent:#211503;
-  --studio:#54c8de;
-  --studio-dim:rgba(84,200,222,.14);
+  --studio:#59cbde;
+  --studio-dim:rgba(89,203,222,.12);
 
   /* semantik */
   --blue-bg:rgba(111,168,245,.13);  --blue-text:#8ab8f7;
@@ -34,76 +36,100 @@
   --green:var(--green-text); --red:var(--red-text); --orange:var(--accent);
   --orange-text:#f2a33c;
 
-  --radius:10px; --radius-lg:16px;
-  --shadow-md:0 4px 14px rgba(0,0,0,.35);
-  --shadow-lg:0 18px 48px rgba(0,0,0,.5);
+  --radius:10px; --radius-lg:14px;
+  --shadow-md:0 2px 10px rgba(0,0,0,.28);
+  --shadow-lg:0 16px 44px rgba(0,0,0,.45);
 
   --font-display:'Oxanium',-apple-system,BlinkMacSystemFont,sans-serif;
   --font-mono:'IBM Plex Mono',ui-monospace,'Cascadia Code',Consolas,monospace;
   --font-body:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+
+  --topbar-h:58px;
 }
 @media (prefers-color-scheme:light){
   :root{
-    --bg:#eef0f4; --bg1:#ffffff; --bg2:#f5f6f9; --bg3:#e8eaf0;
-    --text:#191f2e; --text2:#5a6376; --text3:#9aa1b2;
-    --border:rgba(20,28,48,.09); --border2:rgba(20,28,48,.17);
-    --accent:#c47610; --accent-hover:#a96308;
+    --bg:#eff1f5; --bg1:#ffffff; --bg2:#f6f7fa; --bg3:#e7eaf0;
+    --text:#181e2b; --text2:#55607a; --text3:#768099;
+    --border:rgba(22,30,50,.09); --border2:rgba(22,30,50,.18);
+    --accent:#bd6f0e; --accent-hover:#a05c07;
     --on-accent:#fffaf2;
-    --studio:#0d7f96;
-    --studio-dim:rgba(13,127,150,.1);
+    --studio:#0c7d95;
+    --studio-dim:rgba(12,125,149,.09);
     --blue-bg:rgba(43,108,205,.1);   --blue-text:#2563c4;
     --green-bg:rgba(34,139,84,.1);   --green-text:#1d7c46;
     --red-bg:rgba(204,52,52,.09);    --red-text:#c03434;
     --green:var(--green-text); --red:var(--red-text); --orange:var(--accent);
-    --shadow-md:0 4px 14px rgba(24,32,56,.1);
-    --shadow-lg:0 18px 48px rgba(24,32,56,.16);
+    --shadow-md:0 2px 10px rgba(24,32,56,.08);
+    --shadow-lg:0 16px 44px rgba(24,32,56,.14);
   }
 }
 
+html{scrollbar-gutter:stable;}
 body{
   font-family:var(--font-body);
   background:var(--bg);color:var(--text);
-  min-height:100vh;display:flex;align-items:flex-start;
-  justify-content:center;padding:2.5rem 1rem;
+  min-height:100vh;display:flex;flex-direction:column;
   -webkit-font-smoothing:antialiased;
 }
 ::selection{background:var(--accent);color:var(--on-accent);}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
 
-/* ── kartu utama ── */
-.card{
-  background:var(--bg1);
-  border:1px solid var(--border);
-  border-radius:var(--radius-lg);
-  padding:2rem;
-  width:100%;max-width:760px;
-  box-shadow:var(--shadow-lg);
-  position:relative;
+/* ── topbar ── */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  min-height:var(--topbar-h);
+  display:flex;align-items:center;gap:14px;
+  padding:0 clamp(.9rem,3vw,1.5rem);
+  background:color-mix(in srgb,var(--bg) 82%,transparent);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
 }
-/* kilau tepi atas ala fasad mesin */
-.card::before{
-  content:"";position:absolute;inset:0 0 auto 0;height:1px;
-  background:linear-gradient(90deg,transparent,var(--accent),transparent);
-  opacity:.5;pointer-events:none;
+.brand-row{display:flex;align-items:center;gap:11px;min-width:0;}
+.brand-mark{
+  width:32px;height:32px;border-radius:9px;flex-shrink:0;
+  background:var(--accent);color:var(--on-accent);
+  display:inline-flex;align-items:center;justify-content:center;font-size:19px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28);
+}
+.brand-name{
+  display:flex;align-items:baseline;gap:9px;min-width:0;
+  white-space:nowrap;
+}
+.brand-name .wordmark{
+  font-family:var(--font-display);font-size:15.5px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;line-height:1;
+}
+.brand-name .divider{color:var(--text3);font-weight:400;transform:translateY(-1px);}
+.brand-name .descriptor{
+  font-family:var(--font-mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--text2);line-height:1;
+}
+.topbar-spacer{flex:1;}
+.topbar-actions{display:flex;align-items:center;gap:8px;}
+.topbar-actions button{min-height:34px;padding:6px 11px;font-size:12px;border-radius:8px;}
+
+/* ── kolom konten ── */
+.shell{
+  width:100%;max-width:900px;margin:0 auto;
+  padding:1.9rem clamp(.9rem,3vw,1.5rem) 3rem;
+  flex:1;display:flex;flex-direction:column;
 }
 
-/* ── header ── */
-.header{margin-bottom:1.75rem;}
-.brand-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-.brand-mark{
-  width:30px;height:30px;border-radius:8px;flex-shrink:0;
-  background:var(--accent);color:var(--on-accent);
-  display:inline-flex;align-items:center;justify-content:center;font-size:18px;
-}
-.header .label{
-  font-family:var(--font-mono);font-size:11px;color:var(--accent);
-  font-weight:600;letter-spacing:.22em;text-transform:uppercase;
-}
-.header h1{
+/* ── kepala halaman ── */
+.page-head{margin-bottom:1.6rem;}
+.page-head h1{
   font-family:var(--font-display);
-  font-size:clamp(26px,4vw,32px);font-weight:700;
-  letter-spacing:.01em;text-transform:uppercase;line-height:1.1;
+  font-size:clamp(24px,3.6vw,31px);font-weight:700;
+  letter-spacing:.01em;text-transform:uppercase;line-height:1.12;
+}
+.page-head h1 em{
+  font-style:normal;color:var(--accent);
+}
+.page-head .sub{
+  margin-top:.55rem;font-size:13.5px;color:var(--text2);
+  line-height:1.65;max-width:60ch;
 }
 .format-badge{
   display:inline-block;font-family:var(--font-mono);
@@ -111,13 +137,13 @@ body{
   padding:4px 10px;border-radius:99px;
   background:transparent;color:var(--studio);
   border:1px solid var(--studio);
-  margin-left:10px;vertical-align:middle;transform:translateY(-3px);
+  margin-left:10px;vertical-align:middle;transform:translateY(-4px);
 }
 
 /* ── loader boot ── */
 #loader{
-  background:var(--bg2);border-radius:var(--radius);
-  border:1px solid var(--border);padding:2.5rem 1rem;
+  background:var(--bg2);border-radius:var(--radius-lg);
+  border:1px solid var(--border);padding:3rem 1rem;
   text-align:center;
 }
 .loader-spinner{
@@ -134,10 +160,12 @@ body{
 #loader-fill{height:100%;width:0%;background:var(--accent);border-radius:99px;transition:width .4s;}
 #loader-pct{font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-top:10px;}
 
+/* ── responsif ── */
 @media(max-width:640px){
-  body{padding:1rem .75rem;}
-  .card{padding:1.35rem;}
+  .brand-name .descriptor,.brand-name .divider{display:none;}
+  .shell{padding:1.35rem .9rem 2.5rem;}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important;}
+  html{scroll-behavior:auto !important;}
 }

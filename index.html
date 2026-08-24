@@ -3,20 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hidden Audio Converter — Batch OGG untuk Roblox</title>
+<title>Valency Studio | Audio Converter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f2a33c'/%3E%3Cpath d='M4 16 Q 7.5 7 11 16 T 18 16 T 25 16 T 31 16' stroke='%23211503' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/app.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-<div class="card">
-  <header class="header">
-    <div class="brand-row">
-      <span class="brand-mark"><i class="ti ti-wave-sine"></i></span>
-      <span class="label">Hidden Audio Converter</span>
-    </div>
-    <h1>Batch Processor<span class="format-badge">OGG COMPACT HQ</span></h1>
+
+<div class="topbar">
+  <div class="brand-row">
+    <span class="brand-mark"><i class="ti ti-wave-sine"></i></span>
+    <span class="brand-name">
+      <span class="wordmark">Valency Studio</span>
+      <span class="divider" aria-hidden="true">|</span>
+      <span class="descriptor">Audio Converter</span>
+    </span>
+  </div>
+  <div class="topbar-spacer"></div>
+  <div class="topbar-actions">
+    <button type="button" id="about-btn" class="btn-outline" onclick="showAbout()" aria-label="Tentang aplikasi" title="Tentang aplikasi"><i class="ti ti-info-circle"></i></button>
+  </div>
+</div>
+
+<main class="shell">
+  <header class="page-head">
+    <h1>Konversi Batch <em>OGG</em><span class="format-badge">COMPACT HQ</span></h1>
+    <p class="sub">Trik header murni: hasil <b>8–10× lebih kecil</b>, treble tetap utuh — aman dan tidak mendem di Roblox Studio.</p>
   </header>
 
   <div id="loader">
@@ -27,11 +41,6 @@
   </div>
 
   <div id="main-content" style="display:none">
-
-    <div class="info-box">
-      <i class="ti ti-shield-check"></i>
-      <p>Trik header murni: hasil <b>8–10× lebih kecil</b>, treble tetap utuh — aman dan tidak mendem di Studio.</p>
-    </div>
 
     <!-- 01 · masukkan audio -->
     <section class="stage">
@@ -161,7 +170,7 @@
     </div>
     <p id="status"></p>
 
-    <div class="help-card" id="help-card" style="margin-top:1.75rem;">
+    <div class="help-card" id="help-card">
       <button class="help-toggle" id="help-toggle" onclick="toggleHelp()" aria-expanded="false">
         <span><i class="ti ti-info-circle"></i> Info Lengkap &amp; Cara Pakai Roblox Studio</span>
         <i class="ti ti-chevron-down"></i>
@@ -195,7 +204,7 @@ Sound:Play()</pre>
       </div>
     </div>
   </div>
-</div>
+</main>
 
 <script src="https://unpkg.com/wasm-media-encoders/dist/umd/WasmMediaEncoder.min.js"></script>
 <script src="js/config.js"></script>

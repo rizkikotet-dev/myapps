@@ -18,7 +18,7 @@ App.CONFIG = {
   AUDIT_INTERVAL_MS: 10000,
   AUDIT_MAX_TRIES: 30,
   ABOUT: {
-    title: 'Valency Studio | V.I.O.R Community',
+    title: 'Valency Studio | Audio Converter',
     developer: 'RizkiValency',
     links: {
       github: 'https://github.com/valency-studio',

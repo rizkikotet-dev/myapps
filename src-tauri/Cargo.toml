@@ -1,11 +1,11 @@
 [package]
-name = "hidden-audio-converter"
+name = "valency-studio-audio-converter"
 version = "1.0.0"
-description = "Hidden Audio Batch Converter — batch konversi audio ke OGG Vorbis dengan trik sample-rate, plus upload ke Roblox"
+description = "Valency Studio | Audio Converter — batch konversi audio ke OGG Vorbis dengan trik sample-rate, plus upload ke Roblox"
 edition = "2021"
 
 [lib]
-name = "hidden_audio_converter_lib"
+name = "valency_studio_audio_converter_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

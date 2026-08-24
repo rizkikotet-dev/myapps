@@ -132,6 +132,13 @@ window.App = window.App || {};
     });
     E.qslider.addEventListener('input', () => { E.qDisp.textContent = E.qslider.value; });
 
+    // track fill slider — CSS membaca var(--fill)
+    const setFill = (el) => {
+      const pct = ((parseFloat(el.value) - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+      el.style.setProperty('--fill', pct + '%');
+    };
+    [E.spd, E.dbs, E.qslider].forEach((el) => { setFill(el); el.addEventListener('input', () => setFill(el)); });
+
     // actions — prev/conv/help pakai inline onclick di index.html, jangan bind dua kali
     const clearBtn = document.querySelector('[data-action="clear-all"]');
     if (clearBtn) clearBtn.addEventListener('click', () => App.files.clearAll());
@@ -195,7 +202,7 @@ window.App = window.App || {};
         '<div class="about-body">' +
           '<div class="about-logo"><i class="ti ti-wave-sine"></i></div>' +
           '<div class="about-chip"><i class="ti ti-code"></i> Developer &middot; <b>' + U.escapeHtml(A.developer) + '</b></div>' +
-          '<p class="about-sub">Hidden Audio Batch Converter — konversi audio ke OGG dengan trik sample-rate untuk Roblox Studio.</p>' +
+          '<p class="about-sub">Valency Studio | Audio Converter — batch konversi audio ke OGG dengan trik sample-rate untuk Roblox Studio.</p>' +
           '<div class="about-links">' +
             `<button type="button" class="about-btn about-btn-github" data-url="${A.links.github}"><i class="ti ti-brand-github"></i> GitHub</button>` +
             `<button type="button" class="about-btn about-btn-discord" data-url="${A.links.discord}"><i class="ti ti-brand-discord"></i> Discord</button>` +
@@ -237,9 +244,7 @@ window.App = window.App || {};
     setInterval(checkBackend, 10000);
     setInterval(() => App.roblox.checkRoblox(), 15000);
 
-    showAbout();
-
-    console.log('%cHidden Audio Converter ready', 'color:#2563eb;font-weight:bold');
+    console.log('%cValency Studio | Audio Converter ready', 'color:#f2a33c;font-weight:bold');
   }
 
   // expose untuk modul lain yang butuh checkBackend

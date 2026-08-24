@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build server.py menjadi sidecar binary PyInstaller dan taruh di
-src-tauri/binaries/hidden-audio-server-<rust-target-triple>[.exe]
+src-tauri/binaries/valency-server-<rust-target-triple>[.exe]
 
 Dipakai lokal maupun di GitHub Actions.
 Prasyarat: pip install -r requirements.txt pyinstaller
@@ -32,7 +32,7 @@ def main() -> int:
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--onefile",
-        "--name", "hidden-audio-server",
+        "--name", "valency-server",
         "--distpath", str(BIN),
         "--workpath", str(BUILD_DIR / "work"),
         "--specpath", str(BUILD_DIR),
@@ -55,8 +55,8 @@ def main() -> int:
     print("[sidecar]", " ".join(cmd))
     subprocess.check_call(cmd, cwd=ROOT)
 
-    raw = BIN / f"hidden-audio-server{exe}"
-    dest = BIN / f"hidden-audio-server-{triple}{exe}"
+    raw = BIN / f"valency-server{exe}"
+    dest = BIN / f"valency-server-{triple}{exe}"
     shutil.move(str(raw), str(dest))
     print(f"[sidecar] ok -> {dest}")
     return 0

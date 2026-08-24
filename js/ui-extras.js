@@ -51,6 +51,20 @@
     ctx.clearRect(0, 0, W, H);
     var mid = H / 2;
 
+    // graticule ala layar osiloskop
+    ctx.strokeStyle = colGrid;
+    ctx.globalAlpha = 0.13;
+    ctx.lineWidth = 1;
+    var stepX = W / 8;
+    for (var gx = stepX; gx < W - 1; gx += stepX) {
+      ctx.beginPath(); ctx.moveTo(gx, 5); ctx.lineTo(gx, H - 5); ctx.stroke();
+    }
+    var stepY = H / 4;
+    for (var gy = stepY; gy < H - 1; gy += stepY) {
+      ctx.beginPath(); ctx.moveTo(5, gy); ctx.lineTo(W - 5, gy); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
     // garis referensi tengah
     ctx.strokeStyle = colGrid;
     ctx.globalAlpha = 0.35;
@@ -59,6 +73,14 @@
     ctx.moveTo(6, mid); ctx.lineTo(W - 6, mid);
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+
+    // label sudut
+    ctx.fillStyle = colGrid;
+    ctx.globalAlpha = 0.55;
+    ctx.font = '600 9px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('SCOPE · 1 \u00F7 SPEED', W - 9, 14);
     ctx.globalAlpha = 1;
 
     // gelombang: jumlah siklus mengikuti speed — makin cepat makin rapat
@@ -107,8 +129,8 @@
   btn.className = 'btn-outline update-btn';
   btn.innerHTML = '<i class="ti ti-refresh"></i> Cek Update';
   btn.addEventListener('click', checkUpdate);
-  // taruh di brand-row header — selalu terlihat (bukan di #file-list yang tersembunyi)
-  var anchor = document.querySelector('.brand-row');
+  // taruh di topbar (sisi kanan, sebelah tombol About) — selalu terlihat
+  var anchor = document.querySelector('.topbar-actions');
   if (anchor) anchor.appendChild(btn);
 
   function setBtn(html) { btn.innerHTML = html; }
@@ -152,7 +174,12 @@
       setBtn('<i class="ti ti-alert-circle"></i> Gagal');
       setTimeout(function () { setBtn('<i class="ti ti-refresh"></i> Cek Update'); }, 4000);
       if (typeof Swal !== 'undefined' && !(Swal.isVisible && Swal.isVisible())) {
-        Swal.fire({ title: 'Update gagal', text: String(e).slice(0, 200), icon: 'error' });
+        var raw = String(e).slice(0, 200);
+        // manifest latest.json belum ada / tidak valid di endpoint rilis
+        var hint = /release JSON|404|not found|status code 4/i.test(raw)
+          ? 'Server pembaruan belum memiliki rilis yang dapat diunduh (latest.json belum tersedia). Coba lagi nanti, atau unduh installer terbaru dari halaman Releases GitHub.'
+          : raw;
+        Swal.fire({ title: 'Update gagal', text: hint, icon: 'error' });
       }
     }
   }

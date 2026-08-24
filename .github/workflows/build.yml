@@ -444,6 +444,18 @@ jobs:
           fi
 
           # --------------------------------------------------
+          # macOS updater bundle (.app.tar.gz dibuat di bundle/macos/)
+          # --------------------------------------------------
+
+          if [ -d "$TARGET_DIR/macos" ]; then
+            find "$TARGET_DIR/macos" \
+              -maxdepth 1 \
+              -type f \
+              \( -name "*.app.tar.gz" -o -name "*.app.tar.gz.sig" \) \
+              -exec cp {} "$OUTPUT_DIR/" \;
+          fi
+
+          # --------------------------------------------------
           # Updater
           # --------------------------------------------------
 
@@ -647,6 +659,72 @@ jobs:
             -type f \
             -printf "%f\n" \
             | sort
+
+      # ======================================================
+      # GENERATE UPDATER MANIFEST
+      # ======================================================
+
+      - name: Generate Updater Manifest (latest.json)
+        env:
+          REL_TAG: ${{ steps.release.outputs.tag }}
+          REL_VERSION: ${{ steps.release.outputs.version }}
+          BASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          set -e
+
+          python3 - <<'PY'
+          import glob, json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from urllib.parse import quote
+
+          base = os.environ["BASE_URL"].rstrip("/")
+
+          def one(pattern):
+              matches = sorted(glob.glob(os.path.join("final-release", pattern)))
+              if not matches:
+                  raise SystemExit(
+                      f"::error::Updater artifact tidak ditemukan: {pattern} — "
+                      "pastikan bundle dihasilkan dengan createUpdaterArtifacts=true"
+                  )
+              return matches[0]
+
+          win = one("*-setup.exe")
+          mac = one("*.app.tar.gz")
+
+          sigs = {}
+          for label, path in (("windows-x86_64", win), ("darwin-aarch64", mac)):
+              sig_path = path + ".sig"
+              if not os.path.isfile(sig_path):
+                  raise SystemExit(
+                      f"::error::Signature updater hilang: {os.path.basename(sig_path)} — "
+                      "cek secret TAURI_SIGNING_PRIVATE_KEY"
+                  )
+              sigs[label] = (path, Path(sig_path).read_text(encoding="utf-8").strip())
+
+          version = os.environ["REL_VERSION"]
+
+          manifest = {
+              "version": version,
+              "notes": f"Desktop App v{version}",
+              "pub_date": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "platforms": {
+                  platform: {
+                      "signature": signature,
+                      "url": f"{base}/{quote(os.path.basename(path))}",
+                  }
+                  for platform, (path, signature) in sigs.items()
+              },
+          }
+
+          out = Path("final-release/latest.json")
+          out.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+          print(out.read_text(encoding="utf-8"))
+          PY
+
+          echo "latest.json generated."
 
       # ======================================================
       # PUBLISH RELEASE

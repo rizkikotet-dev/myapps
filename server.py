@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Hidden Audio Batch Converter — yt-dlp backend
+Valency Studio | Audio Converter — yt-dlp backend
 - Serves index.html static
 - POST /api/download  {url}  -> bestaudio via yt-dlp (YouTube, SoundCloud, +1800 sites)
 - GET  /api/health    -> yt-dlp version check
@@ -175,17 +175,18 @@ def parse_multipart(content_type: str, body: bytes):
     return parts
 
 def _read_config_file() -> dict | None:
-    # prioritas: DATA_DIR (override dev/user) > config dibundel dalam exe
-    for p in (ROBLOX_CONFIG_PATH, BUNDLED_CONFIG_PATH):
+    # prioritas: DATA_DIR (override dev/user) > config dibundel dalam exe.
+    # loop sudah menangani precedence: DATA_DIR dicek dulu, bundled hanya
+    # dibaca jika DATA_DIR tidak ada / tidak valid. Jangan skip bundled —
+    # itu satu-satunya sumber config saat HIDDEN_AUDIO_DATA_DIR kosong.
+    for p in dict.fromkeys((ROBLOX_CONFIG_PATH, BUNDLED_CONFIG_PATH)):
         try:
-            if not FROZEN and p == BUNDLED_CONFIG_PATH:
-                continue  # saat dev, ROOT == DATA_DIR — hindari baca dua kali
             if p.exists():
                 j = json.loads(p.read_text(encoding="utf-8-sig"))
                 if isinstance(j, dict) and j:
                     return j
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[roblox] config gagal dibaca ({p}): {e}", flush=True)
     return None
 
 def load_roblox_config():
@@ -488,7 +489,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             "<body style='font-family:sans-serif;background:#141414;color:#eee;"
                             "text-align:center;padding-top:18vh'>"
                             "<h2>&#10003; Login Roblox berhasil</h2>"
-                            "<p style='color:#999'>Silakan kembali ke aplikasi Hidden Audio Converter.</p>"
+                            "<p style='color:#999'>Silakan kembali ke aplikasi Valency Studio | Audio Converter.</p>"
                             "</body></html>")
                     data = body.encode("utf-8")
                     self.send_response(200)
@@ -701,7 +702,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             qs = urllib.parse.parse_qs(parsed.query)
             # defaults
             display_name = (qs.get("displayName") or [None])[0] or self.headers.get("X-Display-Name") or "Audio"
-            description = (qs.get("description") or ["Uploaded via Hidden Audio Converter"])[0]
+            description = (qs.get("description") or ["Uploaded via Valency Studio | Audio Converter"])[0]
             # allow override creator via query/header
             if qs.get("groupId"):
                 creator = {"groupId": qs.get("groupId")[0]}

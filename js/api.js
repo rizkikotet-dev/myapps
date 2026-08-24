@@ -87,7 +87,7 @@ App.api = (() => {
     const r = await fetch(base + '?json=1', { cache: 'no-store', redirect: 'manual' });
     const ct = r.headers.get('content-type') || '';
     if (!r.ok || !ct.includes('application/json')) {
-      throw new Error('Backend belum mendukung login browser eksternal — tutup app, matikan proses hidden-audio-server lama lewat Task Manager, lalu jalankan ulang.');
+      throw new Error('Backend belum mendukung login browser eksternal — tutup app, matikan proses valency-server lama lewat Task Manager, lalu jalankan ulang.');
     }
     const j = await r.json();
     if (!j.url) throw new Error(j.error || 'URL login tidak diterima dari server');

@@ -39,7 +39,7 @@ fn data_dir(app: &tauri::AppHandle) -> std::io::Result<std::path::PathBuf> {
 
 fn spawn_server(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let dir = data_dir(app)?;
-    let sidecar = app.shell().sidecar("hidden-audio-server")?;
+    let sidecar = app.shell().sidecar("valency-server")?;
     let (mut rx, child) = sidecar
         .args(["--port", "55502", "--host", "127.0.0.1"])
         .env("HIDDEN_AUDIO_DATA_DIR", &dir)

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Hidden Audio Converter",
+  "productName": "Valency Studio",
   "version": "1.0.0",
   "identifier": "com.rizkivalency.hiddenaudio",
   "build": {
@@ -12,7 +12,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Hidden Audio Batch Converter",
+        "title": "Valency Studio | Audio Converter",
         "width": 1180,
         "height": 820,
         "minWidth": 900,
@@ -37,11 +37,11 @@
     "targets": "all",
     "createUpdaterArtifacts": true,
     "category": "Music",
-    "shortDescription": "Batch audio -> OGG hidden-speed converter",
+    "shortDescription": "Batch audio -> OGG converter dengan trik sample-rate untuk Roblox Studio",
     "macOS": {
       "signingIdentity": "-"
     },
-    "externalBin": ["binaries/hidden-audio-server"],
+    "externalBin": ["binaries/valency-server"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

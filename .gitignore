@@ -16,3 +16,7 @@ tauri.key.pub
 
 __pycache__/
 *.pyc
+
+tmp/
+DESIGN_NOTES.md
+.mimocode
