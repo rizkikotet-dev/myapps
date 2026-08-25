@@ -142,6 +142,7 @@
       var update = await invoke('plugin:updater|check', { options: {} });
       if (!update || !update.available) {
         await Swal.fire({ title: 'Tidak ada update', text: 'Aplikasi sudah versi terbaru.', icon: 'success' });
+        busy(false, 'Cek Update');
         return;
       }
       var go = await Swal.fire({
@@ -151,7 +152,7 @@
         confirmButtonText: 'Install & Restart', cancelButtonText: 'Nanti',
         buttonsStyling: false,
       });
-      if (!go.isConfirmed) return;
+      if (!go.isConfirmed) { busy(false, 'Cek Update'); return; }
       // downloadAndInstall via plugin command + Channel untuk progress
       var Channel = window.__TAURI__.core.Channel;
       var ch = new Channel();
