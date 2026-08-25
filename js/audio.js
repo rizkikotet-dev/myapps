@@ -236,8 +236,13 @@ App.audio = (() => {
         if (autoMode) {
           // Auto Upload: semua part langsung ke Roblox — tanpa file lokal/server
           try {
-            await App.roblox.uploadParts(item, partsOut);
+            const upResults = await App.roblox.uploadParts(item, partsOut);
             if (partsOut.length > 1) App.roblox.showPartsSummary(item);
+            if (App.history) App.history.recordConversion(item, {
+              target: 'roblox', speed, q: quality, db: parseFloat(E().dbs.value),
+              sizeOgg: partsOut.reduce((s, p) => s + p.blob.size, 0),
+              parts: partsOut.length, results: upResults,
+            });
           } catch (e) { console.warn('auto upload skip', e); }
         } else {
           // Mode manual: unduh tiap part ke Downloads
@@ -249,10 +254,18 @@ App.audio = (() => {
             document.body.removeChild(a); URL.revokeObjectURL(url);
             await new Promise(r => setTimeout(r, 350));
           }
+          if (App.history) App.history.recordConversion(item, {
+            target: 'download', speed, q: quality, db: parseFloat(E().dbs.value),
+            sizeOgg: partsOut.reduce((s, p) => s + p.blob.size, 0),
+            parts: partsOut.length,
+          });
         }
         item.status = 'done'; doneCount++;
       } catch (e) {
         item.status = 'err'; failCount++;
+        if (App.history) App.history.recordError(item, {
+          target: autoMode ? 'roblox' : 'download', speed, q: quality, db: parseFloat(E().dbs.value),
+        });
         console.error(item.file.name, e);
         U().errorDialog({
           title: 'Konversi gagal',

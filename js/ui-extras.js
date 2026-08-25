@@ -133,10 +133,19 @@
   var anchor = document.querySelector('.topbar-actions');
   if (anchor) anchor.appendChild(btn);
 
+  // versi terpasang sebagai tooltip tombol (butuh izin app:default dari core:default)
+  if (window.__TAURI__.app && typeof window.__TAURI__.app.getVersion === 'function') {
+    window.__TAURI__.app.getVersion().then(function (v) {
+      btn.title = 'Versi ' + v;
+    }).catch(function () {});
+  }
+
   function setBtn(html) { btn.innerHTML = html; }
   function busy(on, label) { btn.disabled = on; setBtn('<i class="ti ti-refresh"></i> ' + label); }
 
   async function checkUpdate() {
+    if (checkUpdate._running) return; // cegah dobel dialog auto-check + klik manual
+    checkUpdate._running = true;
     try {
       busy(true, 'Memeriksa…');
       var update = await invoke('plugin:updater|check', { options: {} });
@@ -156,20 +165,39 @@
       // downloadAndInstall via plugin command + Channel untuk progress
       var Channel = window.__TAURI__.core.Channel;
       var ch = new Channel();
-      var lastPct = -1;
+      var got = 0, total = 0, lastPct = -1, lastMb = -1;
       ch.onmessage = function (evt) {
-        if (evt && evt.event === 'Started' && evt.data.contentLength) {
-          ch._total = evt.data.contentLength;
-        } else if (evt && evt.event === 'Progress') {
-          var pct = ch._total ? Math.min(99, Math.round((evt.data.chunkLength / ch._total) * 100)) : null;
-          if (pct !== null && pct !== lastPct) { lastPct = pct; busy(true, 'Mengunduh ' + pct + '%'); }
-        } else if (evt && evt.event === 'Finished') {
+        if (!evt || !evt.event) return;
+        if (evt.event === 'Started') {
+          total = (evt.data && evt.data.contentLength) || 0;
+          got = 0;
+        } else if (evt.event === 'Progress') {
+          // chunkLength adalah besar tiap chunk (bukan kumulatif)
+          got += (evt.data && evt.data.chunkLength) || 0;
+          if (total > 0) {
+            var pct = Math.min(99, Math.round((got / total) * 100));
+            if (pct !== lastPct) { lastPct = pct; busy(true, 'Mengunduh ' + pct + '%'); }
+          } else {
+            var mb = Math.floor(got / 104857.6) / 10;
+            if (mb !== lastMb) { lastMb = mb; busy(true, 'Mengunduh ' + mb.toFixed(1) + ' MB'); }
+          }
+        } else if (evt.event === 'Finished') {
           busy(true, 'Installing…');
         }
       };
       await invoke('plugin:updater|download_and_install', { onEvent: ch });
       busy(true, 'Restarting…');
-      await window.__TAURI__.process.relaunch();
+      try {
+        await window.__TAURI__.process.relaunch(); // sukses: proses exit sendiri
+      } catch (e2) {
+        console.error('[update] relaunch', e2);
+        busy(false, 'Cek Update');
+        Swal.fire({
+          title: 'Update terinstall',
+          text: 'Restart otomatis gagal — buka ulang aplikasi untuk memakai versi baru.',
+          icon: 'success',
+        });
+      }
     } catch (e) {
       console.error('[update]', e);
       setBtn('<i class="ti ti-alert-circle"></i> Gagal');
@@ -179,14 +207,19 @@
         // manifest latest.json belum ada / tidak valid di endpoint rilis
         var hint = /release JSON|404|not found|status code 4/i.test(raw)
           ? 'Server pembaruan belum memiliki rilis yang dapat diunduh (latest.json belum tersedia). Coba lagi nanti, atau unduh installer terbaru dari halaman Releases GitHub.'
-          : raw;
+          : /sign|verif|public key|pubkey/i.test(raw)
+            ? 'Tanda tangan update tidak cocok dengan pubkey aplikasi. Unduh installer terbaru secara manual dari halaman Releases GitHub.'
+            : raw;
         Swal.fire({ title: 'Update gagal', text: hint, icon: 'error' });
       }
+    } finally {
+      checkUpdate._running = false;
     }
   }
 
-  // cek otomatis sekali saat boot (diam jika tak ada update)
+  // cek otomatis sekali saat boot (diam jika tak ada update; hormati pengaturan)
   setTimeout(function () {
+    if (window.App && App.settings && App.settings.get && App.settings.get().autoUpdateCheck === false) return;
     invoke('plugin:updater|check', { options: {} }).then(function (u) {
       if (u && u.available) checkUpdateFromAuto(u);
     }).catch(function () {});

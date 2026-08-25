@@ -98,7 +98,7 @@ window.App = window.App || {};
     } else if (r === 'logged_out') {
       App.roblox.setRobloxStatus('Logout berhasil.', 'ok');
     }
-    history.replaceState({}, '', location.pathname);
+    history.replaceState({}, '', location.pathname + location.hash);
   }
 
   // ── wire events ──

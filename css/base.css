@@ -110,6 +110,44 @@ body{
 .topbar-actions{display:flex;align-items:center;gap:8px;}
 .topbar-actions button{min-height:34px;padding:6px 11px;font-size:12px;border-radius:8px;}
 
+/* ── hamburger (hanya layar sempit; lihat breakpoint di bawah) ── */
+.nav-toggle{
+  min-height:36px;padding:5px 10px;font-size:20px;
+  background:transparent;border:1px solid transparent;border-radius:8px;
+  color:var(--text2);flex-shrink:0;
+}
+.nav-toggle:hover{background:var(--bg3);color:var(--text);filter:none;}
+
+/* ── app-shell: sidebar + kolom konten ── */
+.layout{display:flex;flex:1;min-width:0;}
+.sidebar{
+  width:228px;flex-shrink:0;
+  position:sticky;top:var(--topbar-h);
+  height:calc(100vh - var(--topbar-h));
+  display:flex;flex-direction:column;
+  background:var(--bg1);
+  border-right:1px solid var(--border);
+  padding:.85rem .7rem;
+  z-index:90;
+}
+.side-nav{display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto;}
+.side-foot{
+  display:flex;align-items:center;gap:8px;
+  padding:11px 12px 4px;
+  border-top:1px solid var(--border);
+  margin-top:.7rem;
+}
+.side-version{font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--text3);}
+.side-scrim{
+  position:fixed;left:0;right:0;top:var(--topbar-h);bottom:0;
+  background:rgba(5,7,12,.55);
+  z-index:80;display:none;
+}
+
+/* view switching oleh js/nav.js; rule global: author display (mis. button{display:inline-flex})
+   selalu mengalahkan UA [hidden], jadi paksa di sini */
+[hidden]{display:none !important;}
+
 /* ── kolom konten ── */
 .shell{
   width:100%;max-width:900px;margin:0 auto;
@@ -161,6 +199,21 @@ body{
 #loader-pct{font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-top:10px;}
 
 /* ── responsif ── */
+@media(max-width:1000px){
+  .nav-toggle{display:inline-flex;}
+  .sidebar{
+    position:fixed;left:0;top:var(--topbar-h);
+    width:246px;
+    transform:translateX(-105%);
+    transition:transform .22s ease;
+    box-shadow:var(--shadow-lg);
+  }
+  .sidebar.open{transform:none;}
+  body.nav-open .side-scrim{display:block;}
+}
+@media(min-width:1001px){
+  .nav-toggle{display:none;}
+}
 @media(max-width:640px){
   .brand-name .descriptor,.brand-name .divider{display:none;}
   .shell{padding:1.35rem .9rem 2.5rem;}

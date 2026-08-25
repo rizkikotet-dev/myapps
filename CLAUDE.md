@@ -26,7 +26,13 @@ Two independent halves that talk over HTTP JSON:
 
 ### Frontend (`index.html` + `js/`, `css/`)
 
-Global `window.App` namespace; one IIFE module per file under `js/`. Script order in index.html matters: `config.js` → `utils.js` → `state.js` → `api.js` → `files.js` → `urlfetch.js` → `roblox.js` → `audio.js` → `main.js` → `ui-extras.js`. Keep this order and don't introduce a bundler. (`ui-extras.js` is self-contained — no `App.*` dependency — but must load after the DOM exists.)
+Global `window.App` namespace; one IIFE module per file under `js/`. Script order in index.html matters: `config.js` → `utils.js` → `state.js` → `api.js` → `settings.js` → `files.js` → `urlfetch.js` → `roblox.js` → `audio.js` → `main.js` → `nav.js` → `history.js` → `dashboard.js` → `ui-extras.js`. Keep this order and don't introduce a bundler. (`ui-extras.js` is self-contained — no `App.*` dependency — but must load after the DOM exists.)
+
+The page is an app shell: sticky topbar + left sidebar (`js/nav.js`, hash router `#/dashboard|konversi|riwayat|pengaturan`) + `<main class="shell">` holding four `<section class="view" id="view-*">`. The whole conversion flow lives untouched inside `view-konversi`; dashboard/pengaturan are placeholders pending later phases. On narrow screens the sidebar becomes off-canvas (hamburger `#nav-toggle`, scrim, `body.nav-open`).
+
+- `history.js` — riwayat konversi/upload in `localStorage['vs_history_v1']` (cap 200). Store API `App.history.{add,recordConversion,recordError,updateByAsset,list,stats,remove,clearAll,subscribe,fmtSize}`; also renders `view-riwayat` (search/filter/delete). Hooks: `audio.js convertAll` records after download/upload/error; `roblox.js pollRobloxAudit` updates `mod`/`status` via `updateByAsset` when moderation finalizes.
+- `dashboard.js` — renders `view-dashboard`: stat cards from `history.stats()`, quick-status panel (mirrors `#backend-dot`/`#roblox-dot` via MutationObserver — those remain the single sources), app version (Tauri `app.getVersion()` / "Web — server.py"), update shortcut (clicks the topbar `.update-btn`, Tauri only), and 5 latest history entries. Re-renders via `history.subscribe()` + on hash open.
+- `settings.js` — preferences in `localStorage['vs_settings_v1']` (`App.settings.get()`): default conv speed/q/dB, auto-upload initial state, desktop auto-update-check, history recording on/off. Loads **before** `main.js` (its DOMContentLoaded handler applies defaults to sliders/checkbox first); changes save instantly and are applied live to the session sliders/checkbox via dispatched events. `history.js` record* guards on `historyEnabled`; `ui-extras.js` boot auto-check guards on `autoUpdateCheck`. The Aplikasi group hides in pure-browser mode.
 
 - `config.js` — backend URL candidates (same-origin, then `127.0.0.1:8000`/`localhost:8000`/`:55502`), Roblox OAuth scopes, poll intervals.
 - `api.js` — every `fetch` call. Backend detection probes candidates against `/api/health`; the winner is stored in `App.state.backendUrl` and reused by all calls.
@@ -49,6 +55,8 @@ Stdlib `http.server.ThreadingHTTPServer`; serves static files plus `/api/*` with
 - Roblox: PKCE OAuth flow (`/api/roblox/login`, `/callback`, `/me`, `/logout`, `/debug`) and `POST /api/roblox/upload`, which parses incoming multipart by hand (the `cgi` module is gone in Python 3.13+) and forwards to the Roblox Assets API v1. `GET /api/roblox/operations/<id>` and `/api/roblox/asset/<id>` proxy moderation polling.
 
 Roblox auth: config precedence is env vars (`ROBLOX_CLIENT_ID`, …) over `roblox_config.json` (copy `roblox_config.example.json`). Setting `api_key` + `user_id` switches uploads to x-api-key mode, making OAuth optional. Tokens persist in `roblox_tokens.json` — real credentials; never commit or print them.
+
+Roblox auth UI (login button, account info, debug/logout — IDs `roblox-*`) lives in the **Dashboard** "Akun Roblox" panel; the Konversi section 03 keeps only the auto-upload checkbox, `#roblox-dot`, upload status line, and a login hint that `roblox.js setDot()` toggles. All those IDs are still collected by `collectEls()`. Note: buttons must have EITHER inline `onclick=` OR a `main.js wire()` listener, never both (double-fire).
 
 Roblox refresh tokens are single-use: `get_valid_access_token()` holds `REFRESH_LOCK` so concurrent pollers don't burn the refresh token twice. On 401/403 upload failures the handler introspects the token, checks granted `creator.ids` (empty ⇒ the user didn't select their account during OAuth consent — respond with a relogin hint), force-refreshes, and retries once.
 

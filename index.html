@@ -13,6 +13,7 @@
 <body>
 
 <div class="topbar">
+  <button type="button" id="nav-toggle" class="nav-toggle" aria-label="Buka menu navigasi" aria-controls="sidebar" aria-expanded="false"><i class="ti ti-menu-2"></i></button>
   <div class="brand-row">
     <span class="brand-mark"><i class="ti ti-wave-sine"></i></span>
     <span class="brand-name">
@@ -27,195 +28,404 @@
   </div>
 </div>
 
-<main class="shell">
-  <header class="page-head">
-    <h1>Konversi Batch <em>OGG</em><span class="format-badge">COMPACT HQ</span></h1>
-    <p class="sub">Trik header murni: hasil <b>8–10× lebih kecil</b>, treble tetap utuh — aman dan tidak mendem di Roblox Studio.</p>
-  </header>
+<div class="layout">
 
-  <div id="loader">
-    <div class="loader-spinner"></div>
-    <p>Memuat encoder OGG Vorbis (~500KB)</p>
-    <div id="loader-track"><div id="loader-fill"></div></div>
-    <p id="loader-pct">Menginisialisasi...</p>
-  </div>
+  <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+    <nav class="side-nav">
+      <a class="nav-item" href="#/dashboard" data-view="dashboard"><i class="ti ti-layout-dashboard"></i><span>Dashboard</span></a>
+      <a class="nav-item" href="#/konversi" data-view="konversi"><i class="ti ti-transform"></i><span>Konversi</span></a>
+      <a class="nav-item" href="#/riwayat" data-view="riwayat"><i class="ti ti-history"></i><span>Riwayat</span></a>
+      <a class="nav-item" href="#/pengaturan" data-view="pengaturan"><i class="ti ti-settings"></i><span>Pengaturan</span></a>
+    </nav>
+    <div class="side-foot">
+      <span class="backend-dot" id="sb-dot-backend" title="Status backend"></span>
+      <span class="side-version">Valency Studio</span>
+    </div>
+  </aside>
+  <div class="side-scrim" id="side-scrim"></div>
 
-  <div id="main-content" style="display:none">
+  <main class="shell">
 
-    <!-- 01 · masukkan audio -->
-    <section class="stage">
-      <p class="stage-tag"><span>01</span>Masukkan Audio</p>
+    <header class="page-head view-head" data-view-head="dashboard">
+      <h1>Dashboard</h1>
+      <p class="sub">Ringkasan aktivitas konversi &amp; status aplikasi.</p>
+    </header>
+    <header class="page-head view-head" data-view-head="konversi" hidden>
+      <h1>Konversi Batch <em>OGG</em><span class="format-badge">COMPACT HQ</span></h1>
+      <p class="sub">Trik header murni: hasil <b>8–10× lebih kecil</b>, treble tetap utuh — aman dan tidak mendem di Roblox Studio.</p>
+    </header>
+    <header class="page-head view-head" data-view-head="riwayat" hidden>
+      <h1>Riwayat</h1>
+      <p class="sub">Catatan hasil konversi &amp; upload — tersimpan di perangkat ini.</p>
+    </header>
+    <header class="page-head view-head" data-view-head="pengaturan" hidden>
+      <h1>Pengaturan</h1>
+      <p class="sub">Preferensi aplikasi — tersimpan otomatis di perangkat ini.</p>
+    </header>
 
-      <div id="drop-zone" role="button" tabindex="0" aria-label="Tambah file audio: klik atau tarik lepas" onclick="document.getElementById('fi').click()">
-        <span class="dz-icon"><i class="ti ti-cloud-upload"></i></span>
-        <p class="dz-title">Tarik &amp; lepas file audio di sini</p>
-        <p class="dz-sub">atau klik untuk memilih banyak file sekaligus</p>
-        <div class="dz-formats"><span>MP3</span><span>WAV</span><span>OGG</span><span>M4A</span><span>FLAC</span></div>
-        <input type="file" id="fi" accept="audio/*" multiple style="display:none">
-      </div>
+    <div id="loader">
+      <div class="loader-spinner"></div>
+      <p>Memuat encoder OGG Vorbis (~500KB)</p>
+      <div id="loader-track"><div id="loader-fill"></div></div>
+      <p id="loader-pct">Menginisialisasi...</p>
+    </div>
 
-      <div class="panel-box" id="url-box">
-        <p class="clabel"><span class="backend-dot" id="backend-dot"></span> Ambil dari URL <span class="strip-note">YouTube / SoundCloud</span></p>
-        <div class="url-row">
-          <input type="text" id="url-input" placeholder="Paste link YouTube, SoundCloud, atau URL lain...">
-          <button class="btn-primary" id="url-btn" onclick="fetchFromUrl()"><i class="ti ti-download"></i> Ambil Audio</button>
-        </div>
-        <p class="url-hint" id="url-hint"></p>
-        <p id="url-status" class="status-line"></p>
-      </div>
-    </section>
+    <div id="main-content" style="display:none">
 
-    <!-- 02 · pengolahan -->
-    <section class="stage">
-      <p class="stage-tag"><span>02</span>Atur Pemrosesan</p>
-
-      <div class="panel-box speed-strip">
-        <p class="clabel">Kecepatan <span class="strip-note">makin cepat = file makin kecil, pitch makin tinggi</span></p>
-        <canvas id="wave-canvas" aria-hidden="true"></canvas>
-        <div class="strip-readout">
-          <div class="readout app-side">
-            <span class="ro-num"><span id="spd-disp">2.30</span><span class="ro-x">×</span></span>
-            <span class="ro-cap">di aplikasi ini</span>
+      <!-- ══ view: dashboard ══ -->
+      <section class="view" id="view-dashboard">
+        <div class="stat-grid" id="stat-grid">
+          <div class="stat-card">
+            <p class="stat-label"><i class="ti ti-music"></i> Total Konversi</p>
+            <p class="stat-num" id="stat-count">0</p>
+            <p class="stat-foot" id="stat-count-foot">belum ada aktivitas</p>
           </div>
-          <div class="ro-link">
-            <i class="ti ti-arrows-left-right"></i>
-            <span class="ro-formula">1 ÷ SPEED</span>
+          <div class="stat-card">
+            <p class="stat-label"><i class="ti ti-compress"></i> Total Hemat</p>
+            <p class="stat-num" id="stat-saved">—</p>
+            <p class="stat-foot" id="stat-saved-foot">ukuran asli → OGG</p>
           </div>
-          <div class="readout studio-side">
-            <span class="ro-num" id="hint-speed">0.435×</span>
-            <span class="ro-cap">PlaybackSpeed di Studio</span>
+          <div class="stat-card">
+            <p class="stat-label"><i class="ti ti-gauge"></i> Rata-rata Speed</p>
+            <p class="stat-num" id="stat-speed">—</p>
+            <p class="stat-foot">kecepatan encode</p>
+          </div>
+          <div class="stat-card">
+            <p class="stat-label"><i class="ti ti-brand-roblox"></i> Upload Roblox</p>
+            <p class="stat-num" id="stat-roblox">0</p>
+            <p class="stat-foot" id="stat-roblox-foot">asset berhasil</p>
           </div>
         </div>
-        <div class="code-chip-row">
-          <code id="studio-code">Sound.PlaybackSpeed = 0.435</code>
-          <button type="button" class="chip-copy" onclick="copyStudioCode()" title="Salin kode untuk Studio"><i class="ti ti-copy"></i></button>
-        </div>
-        <input type="range" id="spd" min="0.5" max="4.0" step="0.05" value="2.3" aria-label="Kecepatan audio">
-        <div class="crange-labels"><span>0.5×</span><span>4.0×</span></div>
-        <span id="speed-info-val" class="sr-only">2.30×</span>
-      </div>
 
-      <div class="controls">
-        <div class="ctrl-box">
-          <p class="clabel">Volume</p>
-          <div class="cval"><span id="db-disp">−4.0</span> <span>dB</span></div>
-          <input type="range" id="dbs" min="-20" max="6" step="0.5" value="-4" aria-label="Volume dalam dB">
-          <div class="crange-labels"><span>−20dB</span><span>+6dB</span></div>
-          <p class="cnote">Gain diterapkan saat render</p>
-        </div>
-        <div class="ctrl-box">
-          <p class="clabel">Kualitas OGG</p>
-          <div class="qval-inline">q<span id="q-disp">9</span> <small>· VBR</small></div>
-          <input type="range" id="qslider" min="0" max="9" step="1" value="9" aria-label="Kualitas OGG Vorbis">
-          <div class="crange-labels"><span>Kecil (q0)</span><span>Terbaik (q9)</span></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 03 · tujuan hasil -->
-    <section class="stage">
-      <p class="stage-tag"><span>03</span>Tujuan Hasil</p>
-
-      <div class="panel-box" id="roblox-box">
-        <p class="clabel"><i class="ti ti-brand-roblox"></i> Roblox <span class="backend-dot" id="roblox-dot"></span> <span class="strip-note">login &amp; auto upload</span></p>
-        <div id="roblox-logged-out">
-          <button class="btn-outline" id="roblox-login-btn" onclick="robloxLogin()"><i class="ti ti-brand-roblox"></i> Login dengan Roblox</button>
-          <p class="url-hint" id="roblox-config-hint" style="display:none"></p>
-        </div>
-        <div id="roblox-logged-in" style="display:none">
-          <div class="rblx-head">
-            <img id="roblox-avatar" src="" alt="">
-            <div class="rblx-id">
-              <span class="name" id="roblox-name">-</span>
-              <span class="idtag"><span id="roblox-sub"></span> · <code id="roblox-creator">userId</code></span>
-            </div>
-            <div class="rblx-actions">
-              <button class="btn-outline" onclick="robloxDebug()"><i class="ti ti-shield-check"></i> Debug</button>
-              <button class="btn-outline" onclick="robloxLogout()"><i class="ti ti-logout"></i> Logout</button>
+        <!-- akun roblox (dipindah dari halaman konversi) -->
+        <div class="panel-box dash-roblox">
+          <p class="clabel"><i class="ti ti-brand-roblox"></i> Akun Roblox <span class="backend-dot" id="dash-dot-roblox"></span> <span class="strip-note">login &amp; auto upload</span></p>
+          <div id="roblox-logged-out">
+            <button class="btn-outline" id="roblox-login-btn"><i class="ti ti-brand-roblox"></i> Login dengan Roblox</button>
+            <p class="url-hint" id="roblox-config-hint" style="display:none"></p>
+          </div>
+          <div id="roblox-logged-in" style="display:none">
+            <div class="rblx-head">
+              <img id="roblox-avatar" src="" alt="">
+              <div class="rblx-id">
+                <span class="name" id="roblox-name">-</span>
+                <span class="idtag"><span id="roblox-sub"></span> · <code id="roblox-creator">userId</code></span>
+              </div>
+              <div class="rblx-actions">
+                <button class="btn-outline" onclick="robloxDebug()"><i class="ti ti-shield-check"></i> Debug</button>
+                <button class="btn-outline" onclick="robloxLogout()"><i class="ti ti-logout"></i> Logout</button>
+              </div>
             </div>
           </div>
-          <label class="auto-upload-label">
-            <input type="checkbox" id="auto-upload-check" checked>
-            <span>Auto-upload hasil konversi ke Roblox <small>(Audio ≤7 menit · ≤20MB)</small></span>
-          </label>
         </div>
-        <p id="roblox-status" class="status-line strip"></p>
-        <p class="meta-row"><i class="ti ti-upload"></i> <code id="roblox-creator2">userId</code> · hasil hanya ke Roblox / Downloads (tidak disimpan di server)</p>
-      </div>
-    </section>
 
-    <div id="file-list" style="display:none;">
-      <div class="fl-header">
-        <p><span id="fc">0</span> file dipilih</p>
-        <button class="btn-outline" data-action="clear-all" style="padding:6px 12px;font-size:12px;"><i class="ti ti-trash"></i> Hapus semua</button>
-      </div>
-      <div id="rows"></div>
-    </div>
+        <div class="panel-box dash-status">
+          <p class="clabel"><i class="ti ti-activity"></i> Status <span class="strip-note">pembaruan otomatis</span></p>
+          <div class="dash-status-grid">
+            <div class="dash-status-item">
+              <span class="backend-dot" id="dash-dot-backend"></span>
+              <div class="ds-text">
+                <p class="ds-name">Backend yt-dlp</p>
+                <p class="ds-val" id="ds-backend-val">Memeriksa…</p>
+              </div>
+            </div>
+            <div class="dash-status-item">
+              <span class="ds-ico"><i class="ti ti-app-window"></i></span>
+              <div class="ds-text">
+                <p class="ds-name">Aplikasi</p>
+                <p class="ds-val" id="ds-app-val">—</p>
+              </div>
+              <button type="button" class="btn-outline ds-action" id="dash-update-btn" hidden><i class="ti ti-refresh"></i> Cek Update</button>
+            </div>
+          </div>
+        </div>
 
-    <div class="prog-wrap" id="prog-wrap" style="display:none;">
-      <div class="prog-header">
-        <span id="prog-label">Memproses...</span>
-        <span id="prog-pct">0%</span>
-      </div>
-      <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
-    </div>
+        <div class="panel-box dash-recent">
+          <p class="clabel"><i class="ti ti-clock"></i> Aktivitas Terakhir <a href="#/riwayat" class="dash-link">Lihat semua <i class="ti ti-arrow-right"></i></a></p>
+          <div id="dash-recent-list"></div>
+          <div class="dash-recent-empty" id="dash-recent-empty">
+            <p>Belum ada aktivitas — mulai dari halaman <a href="#/konversi">Konversi</a>.</p>
+          </div>
+        </div>
+      </section>
 
-    <div class="actions">
-      <button class="btn-outline" id="prev-btn" disabled onclick="togglePreview()">
-        <i class="ti ti-player-play"></i> Preview
-      </button>
-      <button class="btn-primary" id="conv-btn" disabled onclick="convertAll()">
-        <i class="ti ti-download"></i> Konversi &amp; Unduh OGG
-      </button>
-    </div>
-    <p id="status"></p>
+      <!-- ══ view: konversi (inti — ID & onclick tidak boleh diubah) ══ -->
+      <section class="view" id="view-konversi" hidden>
 
-    <div class="help-card" id="help-card">
-      <button class="help-toggle" id="help-toggle" onclick="toggleHelp()" aria-expanded="false">
-        <span><i class="ti ti-info-circle"></i> Info Lengkap &amp; Cara Pakai Roblox Studio</span>
-        <i class="ti ti-chevron-down"></i>
-      </button>
-      <div class="help-content" id="help-content">
-        <h3>1. Apa itu “Hidden Audio”?</h3>
-        <p>Tool ini mengubah header OGG Vorbis — bukan re-encode berat. Audio tetap jernih (treble 100% tidak mendem) tapi file jadi 8–10× lebih kecil. Triknya: sample-rate asli (misal 44100 Hz) dikali kecepatan (misal 2.30 → 101430 Hz) lalu ditulis di header OggS. Saat diputar normal jadi chipmunk, tapi di Roblox Studio kamu turunkan <code>PlaybackSpeed</code> ke kebalikan (1/kecepatan) dan suara kembali normal.</p>
-        <div class="tip">Live: <b id="help-speed">2.30×</b> → di Studio pakai <b id="help-inverse">0.435</b> — <code id="help-code">Sound.PlaybackSpeed = 0.435</code></div>
+        <!-- 01 · masukkan audio -->
+        <section class="stage">
+          <p class="stage-tag"><span>01</span>Masukkan Audio</p>
 
-        <h3>2. Kontrol Kecepatan (Speed)</h3>
-        <ul style="margin-left:20px;margin-bottom:10px;">
-          <li>Slider <b>0.5× – 4.0×</b> (default <b>2.30×</b>). Nilai &gt;1 = lebih cepat &amp; pitch naik (chipmunk).</li>
-          <li>Rumus wajib: <code>PlaybackSpeed di Studio = 1 ÷ Speed di sini</code>. Contoh 2.30× → 1/2.30 = <b>0.435</b>.</li>
-        </ul>
+          <div id="drop-zone" role="button" tabindex="0" aria-label="Tambah file audio: klik atau tarik lepas" onclick="document.getElementById('fi').click()">
+            <span class="dz-icon"><i class="ti ti-cloud-upload"></i></span>
+            <p class="dz-title">Tarik &amp; lepas file audio di sini</p>
+            <p class="dz-sub">atau klik untuk memilih banyak file sekaligus</p>
+            <div class="dz-formats"><span>MP3</span><span>WAV</span><span>OGG</span><span>M4A</span><span>FLAC</span></div>
+            <input type="file" id="fi" accept="audio/*" multiple style="display:none">
+          </div>
 
-        <h3>3. Cara Pakai di Roblox Studio</h3>
-        <ol style="margin-left:20px;margin-bottom:10px;">
-          <li>Upload hasil <code>.ogg</code> ke Roblox (Creator Dashboard → Audio) dapatkan <code>rbxassetid://123456789</code>.</li>
-          <li>Di Explorer buat <code>Sound</code> instance:</li>
-        </ol>
+          <div class="panel-box" id="url-box">
+            <p class="clabel"><span class="backend-dot" id="backend-dot"></span> Ambil dari URL <span class="strip-note">YouTube / SoundCloud</span></p>
+            <div class="url-row">
+              <input type="text" id="url-input" placeholder="Paste link YouTube, SoundCloud, atau URL lain...">
+              <button class="btn-primary" id="url-btn"><i class="ti ti-download"></i> Ambil Audio</button>
+            </div>
+            <p class="url-hint" id="url-hint"></p>
+            <p id="url-status" class="status-line"></p>
+          </div>
+        </section>
+
+        <!-- 02 · pengolahan -->
+        <section class="stage">
+          <p class="stage-tag"><span>02</span>Atur Pemrosesan</p>
+
+          <div class="panel-box speed-strip">
+            <p class="clabel">Kecepatan <span class="strip-note">makin cepat = file makin kecil, pitch makin tinggi</span></p>
+            <canvas id="wave-canvas" aria-hidden="true"></canvas>
+            <div class="strip-readout">
+              <div class="readout app-side">
+                <span class="ro-num"><span id="spd-disp">2.30</span><span class="ro-x">×</span></span>
+                <span class="ro-cap">di aplikasi ini</span>
+              </div>
+              <div class="ro-link">
+                <i class="ti ti-arrows-left-right"></i>
+                <span class="ro-formula">1 ÷ SPEED</span>
+              </div>
+              <div class="readout studio-side">
+                <span class="ro-num" id="hint-speed">0.435×</span>
+                <span class="ro-cap">PlaybackSpeed di Studio</span>
+              </div>
+            </div>
+            <div class="code-chip-row">
+              <code id="studio-code">Sound.PlaybackSpeed = 0.435</code>
+              <button type="button" class="chip-copy" onclick="copyStudioCode()" title="Salin kode untuk Studio"><i class="ti ti-copy"></i></button>
+            </div>
+            <input type="range" id="spd" min="0.5" max="4.0" step="0.05" value="2.3" aria-label="Kecepatan audio">
+            <div class="crange-labels"><span>0.5×</span><span>4.0×</span></div>
+            <span id="speed-info-val" class="sr-only">2.30×</span>
+          </div>
+
+          <div class="controls">
+            <div class="ctrl-box">
+              <p class="clabel">Volume</p>
+              <div class="cval"><span id="db-disp">−4.0</span> <span>dB</span></div>
+              <input type="range" id="dbs" min="-20" max="6" step="0.5" value="-4" aria-label="Volume dalam dB">
+              <div class="crange-labels"><span>−20dB</span><span>+6dB</span></div>
+              <p class="cnote">Gain diterapkan saat render</p>
+            </div>
+            <div class="ctrl-box">
+              <p class="clabel">Kualitas OGG</p>
+              <div class="qval-inline">q<span id="q-disp">9</span> <small>· VBR</small></div>
+              <input type="range" id="qslider" min="0" max="9" step="1" value="9" aria-label="Kualitas OGG Vorbis">
+              <div class="crange-labels"><span>Kecil (q0)</span><span>Terbaik (q9)</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 03 · tujuan hasil -->
+        <section class="stage">
+          <p class="stage-tag"><span>03</span>Tujuan Hasil</p>
+
+          <div class="panel-box" id="roblox-box">
+            <p class="clabel"><i class="ti ti-brand-roblox"></i> Roblox <span class="backend-dot" id="roblox-dot"></span> <span class="strip-note">auto upload</span></p>
+            <label class="auto-upload-label">
+              <input type="checkbox" id="auto-upload-check" checked>
+              <span>Auto-upload hasil konversi ke Roblox <small>(Audio ≤7 menit · ≤20MB)</small></span>
+            </label>
+            <p class="url-hint" id="roblox-login-hint">Belum login? Buka <a href="#/dashboard">Dashboard → Akun Roblox</a> untuk mengaktifkan auto-upload.</p>
+            <p id="roblox-status" class="status-line strip"></p>
+            <p class="meta-row"><i class="ti ti-upload"></i> <code id="roblox-creator2">userId</code> · hasil hanya ke Roblox / Downloads (tidak disimpan di server)</p>
+          </div>
+        </section>
+
+        <div id="file-list" style="display:none;">
+          <div class="fl-header">
+            <p><span id="fc">0</span> file dipilih</p>
+            <button class="btn-outline" data-action="clear-all" style="padding:6px 12px;font-size:12px;"><i class="ti ti-trash"></i> Hapus semua</button>
+          </div>
+          <div id="rows"></div>
+        </div>
+
+        <div class="prog-wrap" id="prog-wrap" style="display:none;">
+          <div class="prog-header">
+            <span id="prog-label">Memproses...</span>
+            <span id="prog-pct">0%</span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn-outline" id="prev-btn" disabled onclick="togglePreview()">
+            <i class="ti ti-player-play"></i> Preview
+          </button>
+          <button class="btn-primary" id="conv-btn" disabled onclick="convertAll()">
+            <i class="ti ti-download"></i> Konversi &amp; Unduh OGG
+          </button>
+        </div>
+        <p id="status"></p>
+
+        <div class="help-card" id="help-card">
+          <button class="help-toggle" id="help-toggle" onclick="toggleHelp()" aria-expanded="false">
+            <span><i class="ti ti-info-circle"></i> Info Lengkap &amp; Cara Pakai Roblox Studio</span>
+            <i class="ti ti-chevron-down"></i>
+          </button>
+          <div class="help-content" id="help-content">
+            <h3>1. Apa itu “Hidden Audio”?</h3>
+            <p>Tool ini mengubah header OGG Vorbis — bukan re-encode berat. Audio tetap jernih (treble 100% tidak mendem) tapi file jadi 8–10× lebih kecil. Triknya: sample-rate asli (misal 44100 Hz) dikali kecepatan (misal 2.30 → 101430 Hz) lalu ditulis di header OggS. Saat diputar normal jadi chipmunk, tapi di Roblox Studio kamu turunkan <code>PlaybackSpeed</code> ke kebalikan (1/kecepatan) dan suara kembali normal.</p>
+            <div class="tip">Live: <b id="help-speed">2.30×</b> → di Studio pakai <b id="help-inverse">0.435</b> — <code id="help-code">Sound.PlaybackSpeed = 0.435</code></div>
+
+            <h3>2. Kontrol Kecepatan (Speed)</h3>
+            <ul style="margin-left:20px;margin-bottom:10px;">
+              <li>Slider <b>0.5× – 4.0×</b> (default <b>2.30×</b>). Nilai &gt;1 = lebih cepat &amp; pitch naik (chipmunk).</li>
+              <li>Rumus wajib: <code>PlaybackSpeed di Studio = 1 ÷ Speed di sini</code>. Contoh 2.30× → 1/2.30 = <b>0.435</b>.</li>
+            </ul>
+
+            <h3>3. Cara Pakai di Roblox Studio</h3>
+            <ol style="margin-left:20px;margin-bottom:10px;">
+              <li>Upload hasil <code>.ogg</code> ke Roblox (Creator Dashboard → Audio) dapatkan <code>rbxassetid://123456789</code>.</li>
+              <li>Di Explorer buat <code>Sound</code> instance:</li>
+            </ol>
 <pre>local Sound = Instance.new("Sound")
 Sound.SoundId = "rbxassetid://123456789" -- ganti ID audio kamu
 Sound.PlaybackSpeed = 0.435 -- sesuaikan dengan 1/speed (contoh 2.30×)
 Sound.Volume = 1
 Sound.Parent = workspace
 Sound:Play()</pre>
-        <div class="warn">Jangan set <code>PlaybackSpeed</code> = speed yang sama di sini! Selalu gunakan kebalikannya. 2.30× di sini = 0.435 di Studio.</div>
+            <div class="warn">Jangan set <code>PlaybackSpeed</code> = speed yang sama di sini! Selalu gunakan kebalikannya. 2.30× di sini = 0.435 di Studio.</div>
 
-        <h3>4. Mode Deploy (No Server Storage)</h3>
-        <p>Hasil konversi <b>tidak pernah disimpan di server</b> — Auto Upload ON: langsung ke Roblox via OTT; OFF: langsung ke folder <b>Downloads</b> perangkat kamu. Aman untuk deploy publik, tanpa penumpukan file di server.</p>
-      </div>
+            <h3>4. Mode Deploy (No Server Storage)</h3>
+            <p>Hasil konversi <b>tidak pernah disimpan di server</b> — Auto Upload ON: langsung ke Roblox via OTT; OFF: langsung ke folder <b>Downloads</b> perangkat kamu. Aman untuk deploy publik, tanpa penumpukan file di server.</p>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ══ view: riwayat ══ -->
+      <section class="view" id="view-riwayat" hidden>
+        <div class="hist-toolbar">
+          <div class="hist-search">
+            <i class="ti ti-search"></i>
+            <input type="text" id="hist-search" placeholder="Cari nama file..." aria-label="Cari riwayat">
+          </div>
+          <div class="hist-filters" id="hist-filters" role="group" aria-label="Filter riwayat">
+            <button type="button" class="hist-chip active" data-filter="all">Semua</button>
+            <button type="button" class="hist-chip" data-filter="download">Unduhan</button>
+            <button type="button" class="hist-chip" data-filter="roblox">Roblox</button>
+            <button type="button" class="hist-chip" data-filter="err">Gagal</button>
+          </div>
+          <button type="button" class="btn-outline hist-clear" id="hist-clear"><i class="ti ti-trash"></i> Hapus</button>
+        </div>
+        <p class="hist-count" id="hist-count"></p>
+        <div id="hist-list"></div>
+        <div class="panel-box empty-state" id="hist-empty">
+          <span class="es-icon"><i class="ti ti-history"></i></span>
+          <p class="es-title">Belum ada riwayat</p>
+          <p class="es-sub">Setiap konversi/upload yang berhasil akan tercatat otomatis di sini.</p>
+        </div>
+      </section>
+
+      <!-- ══ view: pengaturan ══ -->
+      <section class="view" id="view-pengaturan" hidden>
+        <div class="panel-box set-box">
+          <p class="clabel"><i class="ti ti-adjustments-horizontal"></i> Default Konversi <span class="strip-note">nilai awal tiap sesi</span></p>
+          <div class="set-row">
+            <div class="set-info">
+              <p class="set-name">Kecepatan</p>
+              <p class="set-desc">Default slider speed (0.5×–4.0×)</p>
+            </div>
+            <div class="set-ctl">
+              <span class="set-val" id="set-speed-val">2.30×</span>
+              <input type="range" id="set-speed" min="0.5" max="4" step="0.05" value="2.3" aria-label="Default kecepatan">
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <p class="set-name">Kualitas OGG</p>
+              <p class="set-desc">Default VBR quality (q0–q9)</p>
+            </div>
+            <div class="set-ctl">
+              <span class="set-val" id="set-q-val">q9</span>
+              <input type="range" id="set-q" min="0" max="9" step="1" value="9" aria-label="Default kualitas OGG">
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <p class="set-name">Volume</p>
+              <p class="set-desc">Default gain (−20 s/d +6 dB)</p>
+            </div>
+            <div class="set-ctl">
+              <span class="set-val" id="set-db-val">−4.0 dB</span>
+              <input type="range" id="set-db" min="-20" max="6" step="0.5" value="-4" aria-label="Default volume dB">
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <p class="set-name">Auto-upload Roblox</p>
+              <p class="set-desc">Status awal checkbox di halaman konversi</p>
+            </div>
+            <label class="set-switch"><input type="checkbox" id="set-autoupload" checked><span class="set-track"></span></label>
+          </div>
+        </div>
+
+        <div class="panel-box set-box" id="set-app-box">
+          <p class="clabel"><i class="ti ti-app-window"></i> Aplikasi</p>
+          <div class="set-row">
+            <div class="set-info">
+              <p class="set-name">Cek update otomatis</p>
+              <p class="set-desc">Periksa rilis baru sekali saat aplikasi dibuka</p>
+            </div>
+            <label class="set-switch"><input type="checkbox" id="set-autoupdate" checked><span class="set-track"></span></label>
+          </div>
+        </div>
+
+        <div class="panel-box set-box">
+          <p class="clabel"><i class="ti ti-history"></i> Riwayat</p>
+          <div class="set-row">
+            <div class="set-info">
+              <p class="set-name">Catat riwayat</p>
+              <p class="set-desc">Simpan hasil konversi &amp; upload di perangkat ini</p>
+            </div>
+            <label class="set-switch"><input type="checkbox" id="set-history" checked><span class="set-track"></span></label>
+          </div>
+          <div class="set-row">
+            <div class="set-info">
+              <p class="set-name">Bersihkan riwayat</p>
+              <p class="set-desc">Hapus semua entri tersimpan</p>
+            </div>
+            <button type="button" class="btn-outline set-btn" id="set-clear-history"><i class="ti ti-trash"></i> Hapus</button>
+          </div>
+        </div>
+
+        <div class="panel-box set-box set-danger">
+          <p class="clabel"><i class="ti ti-alert-triangle"></i> Zona Risiko</p>
+          <div class="set-row">
+            <div class="set-info">
+              <p class="set-name">Reset pengaturan</p>
+              <p class="set-desc">Kembalikan semua preferensi ke nilai bawaan</p>
+            </div>
+            <button type="button" class="btn-outline set-btn" id="set-reset">Reset</button>
+          </div>
+        </div>
+      </section>
+
     </div>
-  </div>
-</main>
+  </main>
+</div>
 
 <script src="https://unpkg.com/wasm-media-encoders/dist/umd/WasmMediaEncoder.min.js"></script>
 <script src="js/config.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/state.js"></script>
 <script src="js/api.js"></script>
+<script src="js/settings.js"></script>
 <script src="js/files.js"></script>
 <script src="js/urlfetch.js"></script>
 <script src="js/roblox.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/main.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/history.js"></script>
+<script src="js/dashboard.js"></script>
 <script src="js/ui-extras.js"></script>
 </body>
 </html>

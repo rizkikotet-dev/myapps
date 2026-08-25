@@ -4,14 +4,24 @@ name: Build & Release Desktop App
 # Build Matrix + Artifact + Centralized Release
 #
 # Flow:
-#   workflow_dispatch tanpa version
+#   workflow_dispatch (tanpa mengisi apa pun)
 #       -> Build only
 #
-#   workflow_dispatch dengan version
-#       -> Build + Release
+#   workflow_dispatch + centang "release"
+#       -> Build + Release (versi OTOMATIS dari
+#          src-tauri/tauri.conf.json; input "version" hanya
+#          override opsional)
+#
+#   workflow_dispatch + versi sama dgn rilis yang ada
+#       -> Rilis lama DIHAPUS lalu dipublikasikan ulang
+#          (overwrite; git tag dipertahankan)
+#
+#   workflow_dispatch + centang "prerelease"
+#       -> Rilis ditandai pre-release & tidak jadi "latest"
 #
 #   push tag v*
-#       -> Build + Release
+#       -> Build + Release (pre-release otomatis bila versi
+#          mengandung "-", contoh v1.2.3-beta.1)
 #
 # Release hanya dibuat 1x oleh job "release".
 # ============================================================
@@ -20,10 +30,20 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Versi rilis, contoh: v1.2.3 atau 1.2.3. Kosongkan untuk build saja."
+        description: "Override versi, contoh: v1.2.3 atau 1.2.3. Kosongkan = ambil dari src-tauri/tauri.conf.json"
         required: false
         default: ""
         type: string
+      release:
+        description: "Publish GitHub Release"
+        required: false
+        default: false
+        type: boolean
+      prerelease:
+        description: "Tandai rilis sebagai Pre-release"
+        required: false
+        default: false
+        type: boolean
 
   push:
     tags:
@@ -42,10 +62,7 @@ env:
   #   v1.2.3
   #
   # Manual:
-  #   input version
-  #
-  # Empty:
-  #   build only
+  #   input version (kosong = ambil dari src-tauri/tauri.conf.json)
   VERSION: >-
     ${{ github.event_name == 'push'
       && github.ref_name
@@ -224,18 +241,13 @@ jobs:
           set -e
 
           RAW_VERSION="${VERSION:-}"
-
-          # Remove whitespace
           RAW_VERSION="$(echo "$RAW_VERSION" | xargs)"
 
+          # Tanpa input version -> ambil dari src-tauri/tauri.conf.json
           if [ -z "$RAW_VERSION" ]; then
-            echo "version=" >> "$GITHUB_OUTPUT"
-            echo "release=false" >> "$GITHUB_OUTPUT"
-
-            echo "No release version specified."
-            echo "Mode: BUILD ONLY"
-
-            exit 0
+            CONF_READ='import json;print(json.load(open("src-tauri/tauri.conf.json",encoding="utf-8"))["version"].strip())'
+            RAW_VERSION="$(python -c "$CONF_READ")"
+            echo "Versi dari src-tauri/tauri.conf.json : $RAW_VERSION"
           fi
 
           # Ensure version starts with v for release tag.
@@ -252,12 +264,26 @@ jobs:
             exit 1
           fi
 
+          # Release hanya saat push tag, atau dispatch dengan centang "release".
+          IS_RELEASE="false"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            IS_RELEASE="true"
+          elif [ "${{ github.event.inputs.release }}" = "true" ]; then
+            IS_RELEASE="true"
+          fi
+
           echo "version=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
           echo "tag=$RAW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
 
           echo "Release version : $VERSION_NUMBER"
           echo "Release tag     : $RAW_VERSION"
+
+          if [ "$IS_RELEASE" = "true" ]; then
+            echo "Mode            : BUILD + RELEASE"
+          else
+            echo "Mode            : BUILD ONLY"
+          fi
 
       # ======================================================
       # UPDATE TAURI VERSION
@@ -500,7 +526,7 @@ jobs:
         (
           github.event_name == 'workflow_dispatch'
           &&
-          github.event.inputs.version != ''
+          github.event.inputs.release == 'true'
         )
       }}
 
@@ -533,6 +559,13 @@ jobs:
           else
             TAG="${{ github.event.inputs.version }}"
 
+            # Tanpa input version -> ambil dari src-tauri/tauri.conf.json
+            if [ -z "$(echo "$TAG" | xargs)" ]; then
+              CONF_READ='import json;print(json.load(open("src-tauri/tauri.conf.json",encoding="utf-8"))["version"].strip())'
+              TAG="$(python3 -c "$CONF_READ")"
+              echo "Versi dari src-tauri/tauri.conf.json : $TAG"
+            fi
+
             if [[ "$TAG" != v* ]]; then
               TAG="v${TAG}"
             fi
@@ -545,11 +578,22 @@ jobs:
             exit 1
           fi
 
+          # Pre-release: input "prerelease" (dispatch), atau versi mengandung
+          # "-" (push tag, contoh v1.2.3-beta.1).
+          PRERELEASE="false"
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            [[ "$VERSION" == *-* ]] && PRERELEASE="true"
+          elif [ "${{ github.event.inputs.prerelease }}" = "true" ]; then
+            PRERELEASE="true"
+          fi
+
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
 
-          echo "Release tag: $TAG"
-          echo "Release version: $VERSION"
+          echo "Release tag     : $TAG"
+          echo "Release version : $VERSION"
+          echo "Pre-release     : $PRERELEASE"
 
       # ======================================================
       # DOWNLOAD ALL BUILD ARTIFACTS
@@ -727,6 +771,26 @@ jobs:
           echo "latest.json generated."
 
       # ======================================================
+      # OVERWRITE: hapus rilis lama dengan versi sama
+      # (git tag dipertahankan agar push-tag tidak retarget)
+      # ======================================================
+
+      - name: Remove Existing Release (same version)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REL_TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          set -e
+
+          if gh release view "$REL_TAG" >/dev/null 2>&1; then
+            echo "::notice::Rilis $REL_TAG sudah ada — dihapus untuk dipublikasikan ulang."
+            gh release delete "$REL_TAG" --yes
+          else
+            echo "Belum ada rilis $REL_TAG — akan dibuat baru."
+          fi
+
+      # ======================================================
       # PUBLISH RELEASE
       # ======================================================
 
@@ -740,13 +804,11 @@ jobs:
 
           draft: false
 
-          prerelease: >-
-            ${{
-              contains(
-                steps.release.outputs.version,
-                '-'
-              )
-            }}
+          prerelease: ${{ steps.release.outputs.prerelease == 'true' }}
+
+          # Pre-release tidak boleh menjadi "latest" agar endpoint updater
+          # (releases/latest/download/latest.json) tetap menunjuk rilis stabil.
+          make_latest: ${{ steps.release.outputs.prerelease == 'true' && 'false' || 'true' }}
 
           files: |
             final-release/*

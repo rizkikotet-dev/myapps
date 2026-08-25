@@ -54,6 +54,8 @@ App.roblox = (() => {
   function setDot(on, title) {
     E().robloxDot.classList.toggle('on', !!on);
     E().robloxDot.title = title || '';
+    const hint = document.getElementById('roblox-login-hint');
+    if (hint) hint.style.display = on ? 'none' : '';
   }
   function showLoggedOut() {
     E().robloxLoggedOut.style.display = 'block';
@@ -120,8 +122,15 @@ App.roblox = (() => {
         if (st && st !== item.roblox.moderation) {
           item.roblox.moderation = st;
           App.files.renderRows();
-          if (/APPROVED/i.test(st)) { setRobloxStatus(`✓ Disetujui — Asset ID ${assetId}`, 'ok'); U().toast('success', `${aj.displayName || 'Audio'} disetujui Roblox`); return; }
-          if (/REJECTED|BLOCKED/i.test(st)) { item.roblox.status = 'rejected'; App.files.renderRows(); setRobloxStatus(`✗ Ditolak ${st}`, 'err'); return; }
+          if (/APPROVED/i.test(st)) {
+            if (App.history) App.history.updateByAsset(assetId, { mod: 'APPROVED' });
+            setRobloxStatus(`✓ Disetujui — Asset ID ${assetId}`, 'ok'); U().toast('success', `${aj.displayName || 'Audio'} disetujui Roblox`); return;
+          }
+          if (/REJECTED|BLOCKED/i.test(st)) {
+            item.roblox.status = 'rejected'; App.files.renderRows();
+            if (App.history) App.history.updateByAsset(assetId, { mod: String(st).toUpperCase(), status: 'err' });
+            setRobloxStatus(`✗ Ditolak ${st}`, 'err'); return;
+          }
           setRobloxStatus(`⏳ Reviewing ID ${assetId}…`, '');
         } else {
           const s = Math.round((Date.now() - t0) / 1000);
