@@ -198,7 +198,11 @@
       await invoke('plugin:updater|download_and_install', { onEvent: ch });
       busy(true, 'Restarting…');
       try {
-        await window.__TAURI__.process.relaunch(); // sukses: proses exit sendiri
+        // Tanpa bundler tidak ada JS binding @tauri-apps/plugin-process
+        // (window.__TAURI__.process === undefined) — panggil command langsung
+        // via core invoke; izin process:allow-restart sudah ada di capability.
+        // Sukses: proses exit sendiri (di Windows app sudah exit saat install).
+        await invoke('plugin:process|restart');
       } catch (e2) {
         console.error('[update] relaunch', e2);
         busy(false, 'Cek Update');
