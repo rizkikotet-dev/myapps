@@ -93,5 +93,12 @@ App.utils = (() => {
 
   const debounce = (fn, ms = 150) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
 
-  return { fmtSize, sanitizeFilename, ytDlpCommand, escapeHtml, copyText, toast, confirmDialog, inputDialog, errorDialog, debounce, swalBase: base };
+  // Track fill slider — CSS membaca var(--fill). Dipakai main.js + settings.js.
+  const setRangeFill = (el) => {
+    if (!el) return;
+    const pct = ((parseFloat(el.value) - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+    el.style.setProperty('--fill', pct + '%');
+  };
+
+  return { fmtSize, sanitizeFilename, ytDlpCommand, escapeHtml, copyText, toast, confirmDialog, inputDialog, errorDialog, debounce, swalBase: base, setRangeFill };
 })();

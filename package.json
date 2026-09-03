@@ -1,8 +1,8 @@
 {
   "name": "valency-studio-audio-converter",
   "private": true,
-  "version": "1.0.0",
-  "description": "Valency Studio | Audio Converter — Tauri v2 desktop app",
+  "version": "1.1.0",
+  "description": "Valency Studio | Audio Converter - Tauri v2 desktop app",
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",

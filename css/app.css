@@ -248,12 +248,12 @@ button:disabled{opacity:.45;cursor:not-allowed;}
   #wave-canvas{height:56px;}
 }
 
-/* ── about popup ── */
-.about-container{backdrop-filter:blur(8px);background:rgba(9,11,16,.78)!important;}
-.about-popup{background:var(--bg1)!important;border:1px solid var(--border2);border-radius:18px!important;box-shadow:var(--shadow-lg);width:min(92vw,400px)!important;padding:30px 26px 24px!important;color:var(--text);font-family:var(--font-body);}
-.about-popup .swal2-close{display:none;}
-.about-title{font-family:var(--font-display);font-size:17px!important;font-weight:700;color:var(--text)!important;line-height:1.35;padding:0!important;margin:0 0 4px!important;}
-.about-html{padding:0!important;margin:0!important;color:var(--text2);}
+/* ── halaman tentang (view-tentang) ── */
+.about-page{text-align:center;padding:2.4rem 1.2rem;}
+.about-app-name{font-family:var(--font-display);font-size:23px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:12px;line-height:1.15;}
+.about-app-ver{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text2);margin:5px 0 16px;letter-spacing:.08em;}
+.about-tech{font-family:var(--font-mono);font-size:10.5px;color:var(--text3);letter-spacing:.06em;margin-top:20px;padding-top:14px;border-top:1px solid var(--border);}
+.about-tech i{font-size:13px;color:var(--text3);vertical-align:-2px;margin-right:5px;}
 .about-body{text-align:center;}
 .about-logo{width:68px;height:68px;margin:14px auto;border-radius:18px;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--on-accent);font-size:36px;box-shadow:inset 0 1px 0 rgba(255,255,255,.3);}
 .about-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:999px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:11.5px;letter-spacing:.02em;}

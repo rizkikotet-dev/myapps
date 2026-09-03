@@ -60,11 +60,8 @@ App.settings = (() => {
   }
 
   // ── view: #view-pengaturan ──
-  function setFill(el) {
-    if (!el) return;
-    const pct = ((parseFloat(el.value) - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
-    el.style.setProperty('--fill', pct + '%');
-  }
+  // Track fill slider berbagi helper App.utils.setRangeFill (sama dgn main.js).
+  const setFill = (el) => { if (App.utils) App.utils.setRangeFill(el); };
 
   function syncView() {
     const spd = document.getElementById('set-speed');

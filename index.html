@@ -24,7 +24,7 @@
   </div>
   <div class="topbar-spacer"></div>
   <div class="topbar-actions">
-    <button type="button" id="about-btn" class="btn-outline" onclick="showAbout()" aria-label="Tentang aplikasi" title="Tentang aplikasi"><i class="ti ti-info-circle"></i></button>
+    <button type="button" id="about-btn" class="btn-outline" onclick="App.nav.go('tentang')" aria-label="Tentang aplikasi" title="Tentang aplikasi"><i class="ti ti-info-circle"></i></button>
   </div>
 </div>
 
@@ -36,6 +36,7 @@
       <a class="nav-item" href="#/konversi" data-view="konversi"><i class="ti ti-transform"></i><span>Konversi</span></a>
       <a class="nav-item" href="#/riwayat" data-view="riwayat"><i class="ti ti-history"></i><span>Riwayat</span></a>
       <a class="nav-item" href="#/pengaturan" data-view="pengaturan"><i class="ti ti-settings"></i><span>Pengaturan</span></a>
+      <a class="nav-item" href="#/tentang" data-view="tentang"><i class="ti ti-info-circle"></i><span>Tentang</span></a>
     </nav>
     <div class="side-foot">
       <span class="backend-dot" id="sb-dot-backend" title="Status backend"></span>
@@ -61,6 +62,10 @@
     <header class="page-head view-head" data-view-head="pengaturan" hidden>
       <h1>Pengaturan</h1>
       <p class="sub">Preferensi aplikasi — tersimpan otomatis di perangkat ini.</p>
+    </header>
+    <header class="page-head view-head" data-view-head="tentang" hidden>
+      <h1>Tentang</h1>
+      <p class="sub">Informasi aplikasi &amp; tautan developer.</p>
     </header>
 
     <div id="loader">
@@ -405,6 +410,21 @@ Sound:Play()</pre>
             </div>
             <button type="button" class="btn-outline set-btn" id="set-reset">Reset</button>
           </div>
+        </div>
+      </section>
+
+      <!-- ══ view: tentang ══ -->
+      <section class="view" id="view-tentang" hidden>
+        <div class="panel-box about-page">
+          <div class="about-body">
+            <div class="about-logo"><i class="ti ti-wave-sine"></i></div>
+            <p class="about-app-name">Valency Studio</p>
+            <p class="about-app-ver" id="about-version">&hellip;</p>
+            <div class="about-chip"><i class="ti ti-code"></i> Developer &middot; <b id="about-dev"></b></div>
+            <p class="about-sub">Batch konversi audio ke OGG dengan trik sample-rate — hasil 8–10&times; lebih kecil, treble tetap utuh, aman dipakai di Roblox Studio.</p>
+            <div class="about-links" id="about-links"></div>
+          </div>
+          <p class="about-tech"><i class="ti ti-tools"></i> Tauri &middot; Python server.py &middot; yt-dlp &middot; WasmMediaEncoders &middot; SweetAlert2</p>
         </div>
       </section>
 

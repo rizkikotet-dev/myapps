@@ -203,8 +203,8 @@ App.audio = (() => {
     }
 
     const ranges = computePartRanges(rendered.length, originalSr, speed);
-    let blobs = [];
-    for (const r of ranges) blobs = blobs.concat(await encodePartWithGuard(r.start, r.end, 0));
+    const blobs = [];
+    for (const r of ranges) blobs.push(...await encodePartWithGuard(r.start, r.end, 0));
 
     const base = (item.displayName || item.file.name).replace(/\.[^/.]+$/, '');
     const names = partNames(base, blobs.length);

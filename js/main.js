@@ -49,8 +49,7 @@ window.App = window.App || {};
     U.copyText(`Sound.PlaybackSpeed = ${inv}`);
   };
   window.toggleHelp = () => {
-    const open = E.helpContent.style.display !== 'none' && E.helpContent.style.display !== '';
-    const show = !open || E.helpContent.style.display === 'none';
+    const show = E.helpContent.style.display === 'none' || E.helpContent.style.display === '';
     E.helpContent.style.display = show ? 'block' : 'none';
     E.helpToggle.classList.toggle('open', show);
     E.helpToggle.setAttribute('aria-expanded', String(show));
@@ -133,30 +132,16 @@ window.App = window.App || {};
     E.qslider.addEventListener('input', () => { E.qDisp.textContent = E.qslider.value; });
 
     // track fill slider — CSS membaca var(--fill)
-    const setFill = (el) => {
-      const pct = ((parseFloat(el.value) - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
-      el.style.setProperty('--fill', pct + '%');
-    };
-    [E.spd, E.dbs, E.qslider].forEach((el) => { setFill(el); el.addEventListener('input', () => setFill(el)); });
+    [E.spd, E.dbs, E.qslider].forEach((el) => { U.setRangeFill(el); el.addEventListener('input', () => U.setRangeFill(el)); });
 
-    // actions — prev/conv/help pakai inline onclick di index.html, jangan bind dua kali
+    // actions — prev/conv/help + tombol roblox-* pakai inline onclick di
+    // index.html, jangan bind dua kali. Satu-satunya listener di sini:
     const clearBtn = document.querySelector('[data-action="clear-all"]');
     if (clearBtn) clearBtn.addEventListener('click', () => App.files.clearAll());
-    // help-toggle pakai inline onclick="toggleHelp()" di index.html — jangan bind dua kali
 
-    // salin studio code (nilai live)
-    const copyStudio = $('copy-studio');
-    if (copyStudio) copyStudio.addEventListener('click', () => {
-      U.copyText(`Sound.PlaybackSpeed = ${(1 / parseFloat(E.spd.value)).toFixed(3)}`);
-    });
-
-    // roblox buttons
+    // roblox login (dashboard) — logout/debug tetap inline onclick
     const loginBtn = $('roblox-login-btn');
     if (loginBtn) loginBtn.addEventListener('click', () => window.robloxLogin());
-    document.querySelectorAll('[data-action="roblox-logout"]').forEach(b =>
-      b.addEventListener('click', () => window.robloxLogout()));
-    document.querySelectorAll('[data-action="roblox-debug"],[data-action="roblox-debug2"]').forEach(b =>
-      b.addEventListener('click', (e) => { e.preventDefault(); window.robloxDebug(); }));
 
     E.autoUploadCheck.addEventListener('change', () => App.files.updateConvButton());
   }
@@ -187,48 +172,43 @@ window.App = window.App || {};
     }
   }
 
-  // ── about popup ──
+  // ── halaman tentang ──
   function openExternal(url) {
     const invoke = window.__TAURI__?.core?.invoke;
     if (invoke) invoke('open_external', { url }).catch(() => window.open(url, '_blank'));
     else window.open(url, '_blank');
   }
-  window.showAbout = () => {
+  function initAboutPage() {
+    const verEl = $('about-version');
+    if (!verEl) return;
+    const tauri = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
+    if (tauri && window.__TAURI__.app && typeof window.__TAURI__.app.getVersion === 'function') {
+      window.__TAURI__.app.getVersion().then((v) => { verEl.textContent = 'Desktop v' + v; }).catch(() => {});
+    } else {
+      verEl.textContent = 'Web \u2014 python server.py';
+    }
     const A = App.CONFIG.ABOUT;
-    if (typeof Swal === 'undefined') return;
-    Swal.fire({
-      title: A.title,
-      html:
-        '<div class="about-body">' +
-          '<div class="about-logo"><i class="ti ti-wave-sine"></i></div>' +
-          '<div class="about-chip"><i class="ti ti-code"></i> Developer &middot; <b>' + U.escapeHtml(A.developer) + '</b></div>' +
-          '<p class="about-sub">Valency Studio | Audio Converter — batch konversi audio ke OGG dengan trik sample-rate untuk Roblox Studio.</p>' +
-          '<div class="about-links">' +
-            `<button type="button" class="about-btn about-btn-github" data-url="${A.links.github}"><i class="ti ti-brand-github"></i> GitHub</button>` +
-            `<button type="button" class="about-btn about-btn-discord" data-url="${A.links.discord}"><i class="ti ti-brand-discord"></i> Discord</button>` +
-            `<button type="button" class="about-btn about-btn-donate" data-url="${A.links.donate}"><i class="ti ti-heart"></i> Donasi</button>` +
-          '</div>' +
-        '</div>',
-      showConfirmButton: true,
-      confirmButtonText: '<i class="ti ti-x"></i> Tutup',
-      buttonsStyling: false,
-      customClass: {
-        container: 'about-container',
-        popup: 'about-popup',
-        title: 'about-title',
-        htmlContainer: 'about-html',
-        confirmButton: 'about-close',
-      },
-      didOpen: () => {
-        Swal.getPopup().querySelectorAll('.about-btn').forEach(btn =>
-          btn.addEventListener('click', () => openExternal(btn.dataset.url)));
-      },
-    });
-  };
+    const dev = $('about-dev');
+    if (dev) dev.textContent = A.developer;
+    const links = $('about-links');
+    if (links) {
+      const items = [
+        ['brand-github', 'GitHub', A.links.github, 'about-btn-github'],
+        ['brand-discord', 'Discord', A.links.discord, 'about-btn-discord'],
+        ['heart', 'Donasi', A.links.donate, 'about-btn-donate'],
+      ];
+      links.innerHTML = items.map(([icon, label, url, cls]) =>
+        `<button type="button" class="about-btn ${cls}" data-url="${U.escapeHtml(url)}"><i class="ti ti-${icon}"></i> ${label}</button>`
+      ).join('');
+      links.querySelectorAll('.about-btn').forEach(btn =>
+        btn.addEventListener('click', () => openExternal(btn.dataset.url)));
+    }
+  }
 
   async function init() {
     collectEls();
     wire();
+    initAboutPage();
 
     // initial values
     E.spdDisp.textContent = parseFloat(E.spd.value).toFixed(2);

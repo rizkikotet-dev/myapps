@@ -134,6 +134,16 @@ def send_cors(handler):
     handler.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Filename")
     handler.send_header("Access-Control-Expose-Headers", "Content-Disposition")
 
+def send_file_bytes(handler, data: bytes, filename: str, ctype: str):
+    """Kirim satu respons file biner — dipakai /api/file, /api/tmp/file, hasil yt-dlp."""
+    handler.send_response(200)
+    handler.send_header("Content-Type", ctype)
+    handler.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+    handler.send_header("Access-Control-Expose-Headers", "Content-Disposition")
+    handler.send_header("Content-Length", str(len(data)))
+    handler.end_headers()
+    handler.wfile.write(data)
+
 # ── Roblox OAuth helpers ──────────────────────────────────────────────────
 def parse_multipart(content_type: str, body: bytes):
     """Parse multipart/form-data tanpa module cgi (dihapus di Python 3.13+).
@@ -362,15 +372,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not fp or not fp.exists():
                 send_json(self, 404, {"error": "File tidak ditemukan / expired. Coba fetch ulang."})
                 return
-            ctype = audio_mime(fp)
-            self.send_response(200)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Content-Disposition", f'attachment; filename="{fp.name}"')
-            self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
-            data = fp.read_bytes()
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
+            send_file_bytes(self, fp.read_bytes(), fp.name, audio_mime(fp))
             return
 
         # ── Roblox OAuth ──────────────────────────────────────────────
@@ -656,15 +658,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not fp.exists() or not fp.is_file():
                 send_json(self, 404, {"error": "File tidak ada di tmp"})
                 return
-            ctype = audio_mime(fp)
-            self.send_response(200)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Content-Disposition", f'attachment; filename="{fp.name}"')
-            self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
-            data = fp.read_bytes()
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
+            send_file_bytes(self, fp.read_bytes(), fp.name, audio_mime(fp))
             return
 
         # fallback static
@@ -1121,17 +1115,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
             if len(files) == 1:
                 fp = files[0]
-                ctype = audio_mime(fp)
                 # sanitize filename for header
                 safe_name = re.sub(r'[^\w\-. ]+', '_', fp.name).strip() or "audio.m4a"
-                self.send_response(200)
-                self.send_header("Content-Type", ctype)
-                self.send_header("Content-Disposition", f'attachment; filename="{safe_name}"')
-                self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
-                data = fp.read_bytes()
-                self.send_header("Content-Length", str(len(data)))
-                self.end_headers()
-                self.wfile.write(data)
+                send_file_bytes(self, fp.read_bytes(), safe_name, audio_mime(fp))
                 return
             else:
                 # playlist: cap & cache + persist to tmp/

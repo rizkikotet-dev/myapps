@@ -6,7 +6,7 @@
    body.nav-open — lihat base.css & app.css.
    ============================================================ */
 (function () {
-  var VIEWS = ['dashboard', 'konversi', 'riwayat', 'pengaturan'];
+  var VIEWS = ['dashboard', 'konversi', 'riwayat', 'pengaturan', 'tentang'];
   var DEFAULT_VIEW = 'dashboard';
 
   function parseHash() {

@@ -143,6 +143,16 @@
   function setBtn(html) { btn.innerHTML = html; }
   function busy(on, label) { btn.disabled = on; setBtn('<i class="ti ti-refresh"></i> ' + label); }
 
+  // Swal dimuat dari CDN — bisa gagal saat offline. Fallback ke dialog native.
+  function hasSwal() { return typeof Swal !== 'undefined'; }
+  function alertSwal(opts) {
+    if (hasSwal()) return Swal.fire(opts);
+    var text = (opts && (opts.text || opts.title)) || 'Update';
+    if (opts && opts.showCancelButton) return Promise.resolve({ isConfirmed: window.confirm(text) });
+    window.alert(text);
+    return Promise.resolve({});
+  }
+
   async function checkUpdate() {
     if (checkUpdate._running) return; // cegah dobel dialog auto-check + klik manual
     checkUpdate._running = true;
@@ -150,11 +160,11 @@
       busy(true, 'Memeriksa…');
       var update = await invoke('plugin:updater|check', { options: {} });
       if (!update || !update.available) {
-        await Swal.fire({ title: 'Tidak ada update', text: 'Aplikasi sudah versi terbaru.', icon: 'success' });
+        await alertSwal({ title: 'Tidak ada update', text: 'Aplikasi sudah versi terbaru.', icon: 'success' });
         busy(false, 'Cek Update');
         return;
       }
-      var go = await Swal.fire({
+      var go = await alertSwal({
         title: 'Update tersedia',
         text: 'Versi ' + update.version + ' siap diinstall. Unduh, install otomatis, lalu restart aplikasi?',
         icon: 'question', showCancelButton: true,
@@ -192,7 +202,7 @@
       } catch (e2) {
         console.error('[update] relaunch', e2);
         busy(false, 'Cek Update');
-        Swal.fire({
+        alertSwal({
           title: 'Update terinstall',
           text: 'Restart otomatis gagal — buka ulang aplikasi untuk memakai versi baru.',
           icon: 'success',
@@ -202,7 +212,7 @@
       console.error('[update]', e);
       setBtn('<i class="ti ti-alert-circle"></i> Gagal');
       setTimeout(function () { setBtn('<i class="ti ti-refresh"></i> Cek Update'); }, 4000);
-      if (typeof Swal !== 'undefined' && !(Swal.isVisible && Swal.isVisible())) {
+      if (!hasSwal() || !(Swal.isVisible && Swal.isVisible())) {
         var raw = String(e).slice(0, 200);
         // manifest latest.json belum ada / tidak valid di endpoint rilis
         var hint = /release JSON|404|not found|status code 4/i.test(raw)
@@ -210,7 +220,7 @@
           : /sign|verif|public key|pubkey/i.test(raw)
             ? 'Tanda tangan update tidak cocok dengan pubkey aplikasi. Unduh installer terbaru secara manual dari halaman Releases GitHub.'
             : raw;
-        Swal.fire({ title: 'Update gagal', text: hint, icon: 'error' });
+        alertSwal({ title: 'Update gagal', text: hint, icon: 'error' });
       }
     } finally {
       checkUpdate._running = false;
@@ -226,7 +236,7 @@
   }, 5000);
 
   function checkUpdateFromAuto(update) {
-    Swal.fire({
+    alertSwal({
       title: 'Update tersedia',
       text: 'Versi ' + update.version + ' tersedia. Install sekarang?',
       icon: 'info', showCancelButton: true,

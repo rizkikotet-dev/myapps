@@ -105,6 +105,29 @@ App.dashboard = (() => {
     sync();
   }
 
+  // Tombol .update-btn dibuat async oleh ui-extras.js (setelah modul ini
+  // wire), jadi pantau .topbar-actions sampai tombolnya muncul.
+  function wireUpdateShortcut() {
+    const btn = $('dash-update-btn');
+    const anchor = document.querySelector('.topbar-actions');
+    if (!btn || !anchor) return;
+    const sync = () => {
+      const ub = anchor.querySelector('.update-btn');
+      btn.hidden = !ub;
+    };
+    if (typeof MutationObserver !== 'undefined') {
+      new MutationObserver(sync).observe(anchor, { childList: true });
+    }
+    if (!btn.dataset.wired) {
+      btn.dataset.wired = '1';
+      btn.addEventListener('click', () => {
+        const ub = anchor.querySelector('.update-btn');
+        if (ub) ub.click();
+      });
+    }
+    sync();
+  }
+
   function renderVersion() {
     const el = $('ds-app-val');
     if (!el) return;
@@ -112,14 +135,7 @@ App.dashboard = (() => {
     if (tauri && window.__TAURI__.app && typeof window.__TAURI__.app.getVersion === 'function') {
       window.__TAURI__.app.getVersion().then((v) => {
         el.textContent = 'Desktop v' + v;
-        const btn = $('dash-update-btn');
-        if (btn) {
-          btn.hidden = !document.querySelector('.topbar-actions .update-btn');
-          btn.addEventListener('click', () => {
-            const ub = document.querySelector('.topbar-actions .update-btn');
-            if (ub) ub.click();
-          });
-        }
+        wireUpdateShortcut();
       }).catch(() => { el.textContent = 'Desktop'; });
     } else {
       el.textContent = 'Web — server.py';

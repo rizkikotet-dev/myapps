@@ -1,11 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Valency Studio",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "identifier": "com.rizkivalency.hiddenaudio",
   "build": {
     "frontendDist": "../src-tauri/dist",
-    "beforeDevCommand": "python scripts/sync_dist.py",
+    "devUrl": "http://127.0.0.1:1430",
+    "beforeDevCommand": "python scripts/dev_server.py",
     "beforeBuildCommand": "python scripts/sync_dist.py"
   },
   "app": {

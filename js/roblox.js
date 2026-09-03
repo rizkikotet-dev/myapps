@@ -144,7 +144,7 @@ App.roblox = (() => {
     item.roblox.status = 'polling';
     item.roblox.progress = null;
     item.roblox.operationId = operationId;
-    render(item);
+    App.files.renderRows();
     const t0 = Date.now();
     for (let i = 0; i < App.CONFIG.POLL_OP_MAX_TRIES; i++) {
       await new Promise(r => setTimeout(r, App.CONFIG.POLL_OP_INTERVAL_MS));
@@ -161,7 +161,7 @@ App.roblox = (() => {
           // error operasional Roblox BUKAN error jaringan — hentikan polling, tandai gagal
           const m = String(pj.error.message || JSON.stringify(pj.error)).slice(0, 220);
           item.roblox.status = 'error'; item.roblox.error = m;
-          render(item); setRobloxStatus(`✗ Upload gagal (operation): ${m}`, 'err'); U().toast('error', 'Upload Roblox ditolak');
+          App.files.renderRows(); setRobloxStatus(`✗ Upload gagal (operation): ${m}`, 'err'); U().toast('error', 'Upload Roblox ditolak');
           return;
         }
         if (pj.response) {
@@ -171,7 +171,7 @@ App.roblox = (() => {
           item.roblox.status = rejected ? 'rejected' : 'done';
           item.roblox.assetId = assetId;
           item.roblox.moderation = mod;
-          render(item);
+          App.files.renderRows();
           if (rejected) { setRobloxStatus(`✗ Roblox menolak: ${mod}`, 'err'); U().toast('error', 'Asset ditolak moderasi'); return; }
           if (/APPROVED/i.test(mod)) { setRobloxStatus(`✓ Disetujui — Asset ID ${assetId}`, 'ok'); return; }
           setRobloxStatus(`✓ Upload DITERIMA — Asset ID ${assetId}. Moderasi berjalan, status update otomatis…`, 'ok');
@@ -181,10 +181,8 @@ App.roblox = (() => {
       } catch (e) { console.warn('poll op error', e); }
     }
     item.roblox.msg = 'Masih pending — cek Creator Dashboard';
-    render(item);
+    App.files.renderRows();
   }
-
-  function render(item) { App.files.renderRows(); }
 
   async function uploadToRoblox(blob, filename, displayName, item) {
     const checked = E().autoUploadCheck?.checked;
