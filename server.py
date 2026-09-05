@@ -52,6 +52,9 @@ AUTH_TOKEN_PATH = DATA_DIR / "auth_tokens.json"
 # tidak ada roblox_config.json di DATA_DIR, agar end-user tidak bisa melihat file
 BUNDLED_CONFIG_PATH = ROOT / "roblox_config.json"
 AUTH_CONFIG_PATH = DATA_DIR / "auth_config.json"
+# copy auth_config.json yang dibundel di dalam exe (PyInstaller --add-data) —
+# fallback saat mode frozen (DATA_DIR = app-data dir tidak berisi file ini)
+BUNDLED_AUTH_CONFIG_PATH = ROOT / "auth_config.json"
 FILE_CACHE = {}  # token -> Path
 CACHE_LOCK = threading.Lock()
 OAUTH_STATES = {}  # state -> {verifier, ts}
@@ -231,13 +234,17 @@ def load_roblox_config():
     return None
 
 def load_auth_config():
-    """Load Google/Discord OAuth config from auth_config.json."""
-    try:
-        if AUTH_CONFIG_PATH.exists():
-            j = json.loads(AUTH_CONFIG_PATH.read_text(encoding="utf-8-sig"))
-            return j if isinstance(j, dict) else None
-    except Exception as e:
-        print(f"[auth] config gagal dibaca ({AUTH_CONFIG_PATH}): {e}", flush=True)
+    """Load Google/Discord OAuth config dari auth_config.json.
+    Prioritas: DATA_DIR (override dev/user) > copy yang dibundel dalam exe.
+    Di dev keduanya menunjuk file yang sama (ROOT == DATA_DIR)."""
+    for p in dict.fromkeys((AUTH_CONFIG_PATH, BUNDLED_AUTH_CONFIG_PATH)):
+        try:
+            if p.exists():
+                j = json.loads(p.read_text(encoding="utf-8-sig"))
+                if isinstance(j, dict) and j:
+                    return j
+        except Exception as e:
+            print(f"[auth] config gagal dibaca ({p}): {e}", flush=True)
     return None
 
 def save_roblox_tokens(data: dict):
@@ -757,6 +764,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     if time.time() - OAUTH_STATES[k]["ts"] > 600:
                         OAUTH_STATES.pop(k, None)
             callback_url = gc.get("callback_url") or f"http://{self.headers.get('Host', '127.0.0.1:8000')}/api/auth/callback/google"
+            if FROZEN:
+                # produksi: callback_url di config menunjuk port dev (55501),
+                # sedangkan sidecar Tauri listen di 55502 — pakai Host aktual
+                # agar OAuth callback kembali ke server ini. (Port callback
+                # harus terdaftar di Google Cloud Console → Authorized redirect URIs.)
+                callback_url = f"http://{self.headers.get('Host', '127.0.0.1:8000')}/api/auth/callback/google"
             params = {
                 "client_id": gc["client_id"],
                 "redirect_uri": callback_url,
@@ -896,6 +909,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     if time.time() - OAUTH_STATES[k]["ts"] > 600:
                         OAUTH_STATES.pop(k, None)
             callback_url = dc.get("callback_url") or f"http://{self.headers.get('Host', '127.0.0.1:8000')}/api/auth/callback/discord"
+            if FROZEN:
+                # produksi: callback_url di config menunjuk port dev (55501),
+                # sedangkan sidecar Tauri listen di 55502 — pakai Host aktual
+                # agar OAuth callback kembali ke server ini. (Port callback
+                # harus terdaftar di Discord Developer Portal → OAuth2 Redirects.)
+                callback_url = f"http://{self.headers.get('Host', '127.0.0.1:8000')}/api/auth/callback/discord"
             params = {
                 "client_id": dc["client_id"],
                 "redirect_uri": callback_url,

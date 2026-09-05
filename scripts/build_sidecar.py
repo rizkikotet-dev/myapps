@@ -50,6 +50,14 @@ def main() -> int:
     if cfg.exists():
         cmd += ["--add-data", f"{cfg}{sep}."]
         print(f"[sidecar] roblox_config.json dibundel ke dalam exe")
+    # bundel auth_config.json (Google/Discord OAuth) juga — pola sama dengan
+    # roblox_config.json: tanpa ini, login Discord/Google gagal di build produksi
+    # karena DATA_DIR (app-data dir) tidak berisi file tersebut.
+    # Di CI file ini tidak ada (gitignored) — build tetap jalan tanpa OAuth config.
+    acfg = ROOT / "auth_config.json"
+    if acfg.exists():
+        cmd += ["--add-data", f"{acfg}{sep}."]
+        print(f"[sidecar] auth_config.json dibundel ke dalam exe")
     cmd.append("server.py")
 
     print("[sidecar]", " ".join(cmd))
