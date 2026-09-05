@@ -6,6 +6,47 @@
    glow dekoratif. Glow hanya untuk LED status dot.
    ============================================================ */
 
+/* ── auth gate overlay ── */
+.auth-gate{
+  position:fixed;inset:0;z-index:200;
+  background:linear-gradient(135deg, var(--bg) 0%, var(--bg2) 100%);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+}
+.auth-gate-card{
+  background:var(--bg1);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:40px 30px;
+  box-shadow:var(--shadow-lg);max-width:420px;width:100%;
+  text-align:center;
+}
+.auth-gate-card .login-brand{font-size:48px;color:var(--accent);margin-bottom:16px;}
+.auth-gate-card .login-title{font-size:24px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.auth-gate-card .login-subtitle{font-size:14px;color:var(--text2);margin-bottom:20px;}
+.auth-gate-card .login-desc{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:24px;}
+.auth-gate-card .login-buttons{display:flex;flex-direction:column;gap:12px;margin-bottom:24px;}
+.auth-gate-card .login-btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:12px 16px;border:1px solid var(--border2);border-radius:8px;
+  background:var(--bg2);color:var(--text);font-size:14px;font-weight:500;
+  cursor:pointer;transition:all .2s;
+}
+.auth-gate-card .login-btn:hover{background:var(--bg3);border-color:var(--accent);}
+.auth-gate-card .login-btn i{font-size:18px;}
+.auth-gate-card .login-btn.google{border-color:#4285f4;}
+.auth-gate-card .login-btn.google:hover{background:rgba(66,133,244,.1);}
+.auth-gate-card .login-btn.discord{border-color:#5865f2;}
+.auth-gate-card .login-btn.discord:hover{background:rgba(88,101,242,.1);}
+.auth-gate-card .login-divider{text-align:center;margin:24px 0;color:var(--text3);font-size:12px;position:relative;}
+.auth-gate-card .login-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border);}
+.auth-gate-card .login-divider span{position:relative;background:var(--bg1);padding:0 8px;}
+.auth-gate-card .login-info{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;color:var(--text2);line-height:1.6;}
+.auth-gate-card .login-loader{display:none;text-align:center;}
+.auth-gate-card .login-loader.show{display:block;}
+.auth-gate-card .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
+.auth-gate-card .login-error{background:var(--red-bg);border:1px solid var(--red-text);color:var(--red-text);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;display:none;}
+.auth-gate-card .login-error.show{display:block;}
+@media(max-width:480px){.auth-gate-card{padding:30px 20px;}.auth-gate-card .login-title{font-size:20px;}.auth-gate-card .login-brand{font-size:36px;}}
+
 /* ── tahapan alur kerja ── */
 .stage{margin-bottom:1.9rem;}
 .stage-tag{display:flex;align-items:center;gap:10px;font-family:var(--font-mono);font-size:10.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--text2);margin-bottom:.85rem;}

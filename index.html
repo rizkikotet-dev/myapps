@@ -12,23 +12,26 @@
 <script>
 (function() {
   var p = new URLSearchParams(location.search);
-  var isCallback = p.get('auth') === 'connected' || p.get('auth') === 'error';
+  var isCallback = p.get('auth') === 'connected';
+  // Setelah OAuth callback, jangan redirect ke login.html — biarkan
+  // aplikasi boot. App.auth.checkGate() akan menampilkan gate hanya jika
+  // benar-benar belum login.
   if (isCallback) return;
   var candidates = ['http://127.0.0.1:55501','http://localhost:55501','http://127.0.0.1:8000','http://localhost:8000','http://127.0.0.1:55502','http://localhost:55502'];
   (async function() {
+    var logged = false;
     for (var i = 0; i < candidates.length; i++) {
       try {
         var r = await fetch(candidates[i] + '/api/auth/config', { cache: 'no-store' });
         var ct = r.headers.get('content-type') || '';
         if (r.ok && ct.includes('application/json')) {
           var cfg = await r.json();
-          var logged = (cfg.google && cfg.google.has_token) || (cfg.discord && cfg.discord.has_token);
-          if (!logged) location.replace('login.html');
-          return;
+          logged = (cfg.google && cfg.google.has_token) || (cfg.discord && cfg.discord.has_token);
+          if (logged) return; // sudah login → boot normal, langsung dashboard
         }
       } catch (_) {}
     }
-    location.replace('login.html');
+    if (!logged) location.replace('login.html');
   })();
 })();
 </script>
@@ -52,7 +55,31 @@
   </div>
 </div>
 
-<div class="layout">
+<!-- ══ auth gate: muncul saat belum login (google/discord) ══ -->
+<div id="auth-gate" class="auth-gate" hidden>
+  <div class="auth-gate-card">
+    <div class="login-brand"><i class="ti ti-wave-sine"></i></div>
+    <div class="login-title">Valency Studio</div>
+    <div class="login-subtitle">Audio Converter</div>
+    <p class="login-desc">Masuk untuk menggunakan aplikasi — konversi audio batch ke OGG untuk Roblox Studio, lengkap dengan upload otomatis.</p>
+    <div class="login-error" id="auth-gate-error"></div>
+    <div class="login-buttons">
+      <button type="button" class="login-btn google" id="auth-gate-google" onclick="App.auth.loginFromGate('google')">
+        <i class="ti ti-brand-google"></i><span>Login dengan Google</span>
+      </button>
+      <button type="button" class="login-btn discord" id="auth-gate-discord" onclick="App.auth.loginFromGate('discord')">
+        <i class="ti ti-brand-discord"></i><span>Login dengan Discord</span>
+      </button>
+    </div>
+    <div class="login-loader" id="auth-gate-loader"><div class="spinner"></div><p>Membuka halaman login…</p></div>
+    <div class="login-info">
+      <strong>Tentang Login:</strong><br>
+      Kami menggunakan OAuth2 dari Google dan Discord untuk keamanan data Anda. Informasi login Anda tidak disimpan di server kami.
+    </div>
+  </div>
+</div>
+
+<div class="layout" id="app-layout">
 
   <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
     <nav class="side-nav">

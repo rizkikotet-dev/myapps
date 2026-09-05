@@ -179,5 +179,97 @@ App.auth = (() => {
     setAuthStatus('discord', 'Logout berhasil.', 'ok');
   };
 
-  return { checkAuth, setAuthStatus };
+  // ── gate helpers ──
+
+  function gateEl()        { return document.getElementById('auth-gate'); }
+  function gateErr()       { return document.getElementById('auth-gate-error'); }
+  function gateLoader()    { return document.getElementById('auth-gate-loader'); }
+  function gateButtons()   { return document.querySelectorAll('#auth-gate .login-btn'); }
+  function appLayout()     { return document.getElementById('app-layout'); }
+
+  function showGate(err) {
+    const g = gateEl();
+    if (!g) return;
+    g.removeAttribute('hidden');
+    // hide sidebar + main shell so they don't bleed through
+    if (appLayout()) appLayout().style.visibility = 'hidden';
+    if (err) {
+      const e = gateErr();
+      if (e) { e.textContent = err; e.classList.add('show'); }
+    }
+  }
+
+  function hideGate() {
+    const g = gateEl();
+    if (!g) return;
+    g.setAttribute('hidden', '');
+    if (appLayout()) appLayout().style.visibility = '';
+  }
+
+  function gateLoading(on) {
+    const l = gateLoader();
+    if (l) l.classList.toggle('show', on);
+    gateButtons().forEach(b => { b.disabled = on; });
+  }
+
+  // Cek apakah sudah login; tampilkan / sembunyikan gate.
+  async function checkGate() {
+    try {
+      const cfg = await App.api.authConfig();
+      const logged = (cfg.google && cfg.google.has_token) || (cfg.discord && cfg.discord.has_token);
+      if (logged) {
+        hideGate();
+        await checkAuth();
+      } else {
+        showGate();
+      }
+    } catch (_) {
+      showGate();
+    }
+  }
+
+  // Dipanggil dari tombol di gate overlay.
+  App.auth = App.auth || {};
+  App.auth.loginFromGate = async function(provider) {
+    const e = gateErr();
+    if (e) { e.textContent = ''; e.classList.remove('show'); }
+    gateLoading(true);
+
+    try {
+      if (provider === 'google') await App.api.googleLogin();
+      else await App.api.discordLogin();
+    } catch (err) {
+      gateLoading(false);
+      if (e) { e.textContent = 'Tidak bisa membuka login: ' + err.message; e.classList.add('show'); }
+      return;
+    }
+
+    // Browser biasa: navigasi sudah terjadi (location.href), tidak sampai sini.
+    // Desktop (Tauri): poll sampai session masuk.
+    const meApi = provider === 'google' ? App.api.googleMe : App.api.discordMe;
+    const deadline = Date.now() + 180_000; // 3 menit
+    const tick = async () => {
+      try {
+        const me = await meApi();
+        if (me.logged) { gateLoading(false); await checkGate(); return; }
+      } catch (_) {}
+      if (Date.now() < deadline) setTimeout(tick, 3000);
+      else {
+        gateLoading(false);
+        if (e) { e.textContent = 'Login timeout. Coba lagi.'; e.classList.add('show'); }
+      }
+    };
+    tick();
+  };
+
+  // Dipanggil dari tombol logout di topbar.
+  App.auth.doLogout = async function() {
+    await App.api.logout();
+    await new Promise(r => setTimeout(r, 200));
+    showGate();
+    // reset roblox state juga
+    if (App.roblox && App.roblox.clearState) App.roblox.clearState();
+  };
+
+  return { checkAuth, checkGate, setAuthStatus };
 })();
