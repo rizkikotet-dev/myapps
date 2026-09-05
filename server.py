@@ -47,15 +47,22 @@ TMP_DIR = DATA_DIR / "tmp"
 AUDIO_DIR = DATA_DIR / "audio"
 ROBLOX_CONFIG_PATH = DATA_DIR / "roblox_config.json"
 ROBLOX_TOKEN_PATH = DATA_DIR / "roblox_tokens.json"
+AUTH_TOKEN_PATH = DATA_DIR / "auth_tokens.json"
 # config yang dibundel di dalam exe (PyInstaller --add-data) — fallback jika
 # tidak ada roblox_config.json di DATA_DIR, agar end-user tidak bisa melihat file
 BUNDLED_CONFIG_PATH = ROOT / "roblox_config.json"
+AUTH_CONFIG_PATH = DATA_DIR / "auth_config.json"
 FILE_CACHE = {}  # token -> Path
 CACHE_LOCK = threading.Lock()
 OAUTH_STATES = {}  # state -> {verifier, ts}
 OAUTH_LOCK = threading.Lock()
 REFRESH_LOCK = threading.Lock()
+AUTH_LOCK = threading.Lock()  # read-modify-write auth_tokens.json (logout/refresh)
 ROBLOX_TOKENS = {}  # in-memory {access_token, refresh_token, expires_at, scope, id_token, userinfo}
+AUTH_TOKENS = {}  # in-memory {google, discord: {access_token, refresh_token, expires_at, scope, userinfo}}
+
+# Discord webhook for login notifications
+DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1545355365493899304/hpI_NfYDhKJdsp4g4HCiDzGAUiGqoWWVeY3Xzh8IhoP-AkTVSHKPasoiReiMpHJGXWRS"
 
 def ensure_dirs():
     TMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -223,6 +230,16 @@ def load_roblox_config():
         return j
     return None
 
+def load_auth_config():
+    """Load Google/Discord OAuth config from auth_config.json."""
+    try:
+        if AUTH_CONFIG_PATH.exists():
+            j = json.loads(AUTH_CONFIG_PATH.read_text(encoding="utf-8-sig"))
+            return j if isinstance(j, dict) else None
+    except Exception as e:
+        print(f"[auth] config gagal dibaca ({AUTH_CONFIG_PATH}): {e}", flush=True)
+    return None
+
 def save_roblox_tokens(data: dict):
     global ROBLOX_TOKENS
     ROBLOX_TOKENS = data
@@ -239,6 +256,23 @@ def load_roblox_tokens():
         except Exception:
             ROBLOX_TOKENS = {}
     return ROBLOX_TOKENS
+
+def save_auth_tokens(data: dict):
+    global AUTH_TOKENS
+    AUTH_TOKENS = data
+    try:
+        AUTH_TOKEN_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+def load_auth_tokens():
+    global AUTH_TOKENS
+    if AUTH_TOKEN_PATH.exists():
+        try:
+            AUTH_TOKENS = json.loads(AUTH_TOKEN_PATH.read_text(encoding="utf-8-sig"))
+        except Exception:
+            AUTH_TOKENS = {}
+    return AUTH_TOKENS
 
 def b64url(b: bytes) -> str:
     return base64.urlsafe_b64encode(b).decode().rstrip("=")
@@ -283,6 +317,80 @@ def roblox_resources(access_token: str, cfg: dict):
         headers={"Content-Type": "application/x-www-form-urlencoded"})
     with urllib.request.urlopen(req, timeout=15) as r:
         return json.loads(r.read().decode())
+
+# ── Google OAuth helpers ────────────────────────────────────────────────
+def google_token_request(params: dict):
+    data = urllib.parse.urlencode(params).encode()
+    req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return json.loads(r.read().decode())
+
+def google_userinfo(access_token: str):
+    req = urllib.request.Request("https://www.googleapis.com/oauth2/v3/userinfo",
+        headers={"Authorization": f"Bearer {access_token}"})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        return json.loads(r.read().decode())
+
+# ── Discord OAuth helpers ───────────────────────────────────────────────
+def discord_token_request(params: dict):
+    data = urllib.parse.urlencode(params).encode()
+    req = urllib.request.Request("https://discord.com/api/oauth2/token", data=data,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "ValencyStudio/1.0",
+        })
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return json.loads(r.read().decode())
+
+def discord_userinfo(access_token: str):
+    req = urllib.request.Request("https://discord.com/api/users/@me",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "User-Agent": "ValencyStudio/1.0",
+        })
+    with urllib.request.urlopen(req, timeout=10) as r:
+        return json.loads(r.read().decode())
+
+def send_discord_webhook_login(provider: str, userinfo: dict):
+    """Send login notification to Discord webhook as embed."""
+    if not DISCORD_WEBHOOK_URL:
+        return
+    try:
+        # Extract user details
+        if provider == "google":
+            username = userinfo.get("name") or userinfo.get("email") or "Unknown"
+            email = userinfo.get("email") or "N/A"
+            uuid = userinfo.get("sub") or userinfo.get("id") or "N/A"
+        elif provider == "discord":
+            username = userinfo.get("username") or userinfo.get("global_name") or "Unknown"
+            email = userinfo.get("email") or "N/A"
+            uuid = userinfo.get("id") or "N/A"
+        else:
+            username = str(userinfo.get("name") or userinfo.get("username") or "Unknown")
+            email = str(userinfo.get("email") or "N/A")
+            uuid = str(userinfo.get("sub") or userinfo.get("id") or "N/A")
+
+        embed = {
+            "title": "✅ Login Berhasil",
+            "description": f"Pengguna baru login via **{provider.capitalize()}**",
+            "color": 0x00FF00,  # Green
+            "fields": [
+                {"name": "👤 Nama", "value": username, "inline": True},
+                {"name": "📧 Email", "value": email, "inline": True},
+                {"name": "🔑 UUID", "value": f"`{uuid}`", "inline": False},
+                {"name": "🔐 Tipe Login", "value": provider.capitalize(), "inline": True},
+            ],
+            "footer": {"text": "Valency Studio | Audio Converter"},
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
+        payload = json.dumps({"embeds": [embed]}).encode()
+        req = urllib.request.Request(DISCORD_WEBHOOK_URL, data=payload,
+            headers={"Content-Type": "application/json", "User-Agent": "ValencyStudio/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            pass  # success
+    except Exception as e:
+        print(f"[webhook] Gagal kirim notifikasi: {e}", flush=True)
 
 def force_refresh():
     """Force refresh access token sekarang (dipakai saat 403/401 dari Roblox)."""
@@ -634,6 +742,282 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             return
 
+        # ── Google OAuth ──────────────────────────────────────────────
+        if path == "/api/auth/google/login":
+            acfg = load_auth_config() or {}
+            gc = acfg.get("google") or {}
+            if not gc.get("client_id") or not gc.get("client_secret"):
+                send_json(self, 500, {"error": "auth_config.json belum dikonfigurasi untuk Google. Buat file dengan client_id/client_secret."})
+                return
+            state = b64url(secrets.token_bytes(16))
+            desktop = qs.get("desktop", ["0"])[0] == "1"
+            with OAUTH_LOCK:
+                OAUTH_STATES[state] = {"provider": "google", "ts": time.time(), "desktop": desktop}
+                for k in list(OAUTH_STATES.keys()):
+                    if time.time() - OAUTH_STATES[k]["ts"] > 600:
+                        OAUTH_STATES.pop(k, None)
+            callback_url = gc.get("callback_url") or f"http://{self.headers.get('Host', '127.0.0.1:8000')}/api/auth/callback/google"
+            params = {
+                "client_id": gc["client_id"],
+                "redirect_uri": callback_url,
+                "response_type": "code",
+                "scope": "openid email profile",
+                "state": state,
+                "prompt": "select_account",
+                "access_type": "offline",
+            }
+            url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+            if qs.get("json", [""])[0] == "1":
+                send_json(self, 200, {"ok": True, "url": url})
+                return
+            self.send_response(302)
+            self.send_header("Location", url)
+            self.end_headers()
+            return
+
+        if path == "/api/auth/callback/google":
+            err = qs.get("error", [""])[0]
+            if err:
+                self.send_response(302)
+                self.send_header("Location", "/?auth=error&provider=google&msg=" + urllib.parse.quote(err))
+                self.end_headers()
+                return
+            code = qs.get("code", [""])[0]
+            state = qs.get("state", [""])[0]
+            if not code or not state:
+                send_json(self, 400, {"error": "Missing code/state"})
+                return
+            with OAUTH_LOCK:
+                rec = OAUTH_STATES.pop(state, None)
+            if not rec or rec.get("provider") != "google":
+                send_json(self, 400, {"error": "State tidak valid / expired. Coba login lagi."})
+                return
+            acfg = load_auth_config() or {}
+            gc = acfg.get("google") or {}
+            callback_url = gc.get("callback_url") or f"http://{self.headers.get('Host', '127.0.0.1:8000')}/api/auth/callback/google"
+            try:
+                res = google_token_request({
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": callback_url,
+                    "client_id": gc["client_id"],
+                    "client_secret": gc["client_secret"],
+                })
+                toks = {
+                    "access_token": res["access_token"],
+                    "refresh_token": res.get("refresh_token", ""),
+                    "expires_at": time.time() + int(res.get("expires_in", 3600)),
+                    "scope": res.get("scope", ""),
+                    "token_type": res.get("token_type", "Bearer"),
+                }
+                try:
+                    toks["userinfo"] = google_userinfo(toks["access_token"])
+                except Exception as e:
+                    toks["userinfo"] = {"sub": "?", "error": str(e)}
+                at = load_auth_tokens()
+                at["google"] = toks
+                save_auth_tokens(at)
+                send_discord_webhook_login("google", toks.get("userinfo", {}))
+                if rec.get("desktop"):
+                    body = ("<!doctype html><html><head><meta charset='utf-8'>"
+                            "<title>Login Berhasil</title></head>"
+                            "<body style='font-family:sans-serif;background:#141414;color:#eee;"
+                            "text-align:center;padding-top:18vh'>"
+                            "<h2>&#10003; Login Google berhasil</h2>"
+                            "<p style='color:#999'>Kembali ke aplikasi Valency Studio.</p>"
+                            "<p style='color:#666;margin-top:24px'>Tab ini bisa ditutup.</p>"
+                            "</body></html>")
+                    data = body.encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+                    return
+                self.send_response(302)
+                self.send_header("Location", "/?auth=connected&provider=google")
+                self.end_headers()
+                return
+            except urllib.error.HTTPError as e:
+                body = e.read().decode() if hasattr(e, "read") else str(e)
+                send_json(self, 500, {"error": f"Token exchange gagal: {e.code} {body[:500]}"})
+                return
+            except Exception as e:
+                send_json(self, 500, {"error": f"Callback error: {e}"})
+                return
+
+        if path == "/api/auth/google/me":
+            with AUTH_LOCK:
+                at = load_auth_tokens()
+                gt = at.get("google") or {}
+                if not gt.get("access_token"):
+                    send_json(self, 401, {"logged": False, "error": "Belum login Google"})
+                    return
+                if gt.get("expires_at") and time.time() > gt["expires_at"] - 60:
+                    if gt.get("refresh_token"):
+                        acfg = load_auth_config() or {}
+                        gc = acfg.get("google") or {}
+                        try:
+                            res = google_token_request({
+                                "grant_type": "refresh_token",
+                                "refresh_token": gt["refresh_token"],
+                                "client_id": gc["client_id"],
+                                "client_secret": gc["client_secret"],
+                            })
+                            gt["access_token"] = res["access_token"]
+                            gt["expires_at"] = time.time() + int(res.get("expires_in", 3600))
+                            save_auth_tokens(at)
+                        except Exception as e:
+                            send_json(self, 401, {"logged": False, "error": f"Refresh gagal: {e}"})
+                            return
+            send_json(self, 200, {"logged": True, "provider": "google", "userinfo": gt.get("userinfo"), "scope": gt.get("scope")})
+            return
+
+        if path == "/api/auth/google/logout":
+            with AUTH_LOCK:
+                at = load_auth_tokens()
+                at.pop("google", None)
+                save_auth_tokens(at)
+            send_json(self, 200, {"ok": True, "msg": "Logged out Google"})
+            return
+
+        # ── Discord OAuth ─────────────────────────────────────────────
+        if path == "/api/auth/discord/login":
+            acfg = load_auth_config() or {}
+            dc = acfg.get("discord") or {}
+            if not dc.get("client_id") or not dc.get("client_secret"):
+                send_json(self, 500, {"error": "auth_config.json belum dikonfigurasi untuk Discord. Buat file dengan client_id/client_secret."})
+                return
+            state = b64url(secrets.token_bytes(16))
+            desktop = qs.get("desktop", ["0"])[0] == "1"
+            with OAUTH_LOCK:
+                OAUTH_STATES[state] = {"provider": "discord", "ts": time.time(), "desktop": desktop}
+                for k in list(OAUTH_STATES.keys()):
+                    if time.time() - OAUTH_STATES[k]["ts"] > 600:
+                        OAUTH_STATES.pop(k, None)
+            callback_url = dc.get("callback_url") or f"http://{self.headers.get('Host', '127.0.0.1:8000')}/api/auth/callback/discord"
+            params = {
+                "client_id": dc["client_id"],
+                "redirect_uri": callback_url,
+                "response_type": "code",
+                "scope": "identify email",
+                "state": state,
+                "prompt": "consent",
+            }
+            url = "https://discord.com/oauth2/authorize?" + urllib.parse.urlencode(params)
+            if qs.get("json", [""])[0] == "1":
+                send_json(self, 200, {"ok": True, "url": url})
+                return
+            self.send_response(302)
+            self.send_header("Location", url)
+            self.end_headers()
+            return
+
+        if path == "/api/auth/callback/discord":
+            err = qs.get("error", [""])[0]
+            if err:
+                self.send_response(302)
+                self.send_header("Location", "/?auth=error&provider=discord&msg=" + urllib.parse.quote(err))
+                self.end_headers()
+                return
+            code = qs.get("code", [""])[0]
+            state = qs.get("state", [""])[0]
+            if not code or not state:
+                send_json(self, 400, {"error": "Missing code/state"})
+                return
+            with OAUTH_LOCK:
+                rec = OAUTH_STATES.pop(state, None)
+            if not rec or rec.get("provider") != "discord":
+                send_json(self, 400, {"error": "State tidak valid / expired. Coba login lagi."})
+                return
+            acfg = load_auth_config() or {}
+            dc = acfg.get("discord") or {}
+            callback_url = dc.get("callback_url") or f"http://{self.headers.get('Host', '127.0.0.1:8000')}/api/auth/callback/discord"
+            try:
+                res = discord_token_request({
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": callback_url,
+                    "client_id": dc["client_id"],
+                    "client_secret": dc["client_secret"],
+                })
+                toks = {
+                    "access_token": res["access_token"],
+                    "refresh_token": res.get("refresh_token", ""),
+                    "expires_at": time.time() + int(res.get("expires_in", 604800)),
+                    "scope": res.get("scope", ""),
+                    "token_type": res.get("token_type", "Bearer"),
+                }
+                try:
+                    toks["userinfo"] = discord_userinfo(toks["access_token"])
+                except Exception as e:
+                    toks["userinfo"] = {"id": "?", "error": str(e)}
+                at = load_auth_tokens()
+                at["discord"] = toks
+                save_auth_tokens(at)
+                send_discord_webhook_login("discord", toks.get("userinfo", {}))
+                if rec.get("desktop"):
+                    body = ("<!doctype html><html><head><meta charset='utf-8'>"
+                            "<title>Login Berhasil</title></head>"
+                            "<body style='font-family:sans-serif;background:#141414;color:#eee;"
+                            "text-align:center;padding-top:18vh'>"
+                            "<h2>&#10003; Login Discord berhasil</h2>"
+                            "<p style='color:#999'>Kembali ke aplikasi Valency Studio.</p>"
+                            "<p style='color:#666;margin-top:24px'>Tab ini bisa ditutup.</p>"
+                            "</body></html>")
+                    data = body.encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+                    return
+                self.send_response(302)
+                self.send_header("Location", "/?auth=connected&provider=discord")
+                self.end_headers()
+                return
+            except urllib.error.HTTPError as e:
+                body = e.read().decode() if hasattr(e, "read") else str(e)
+                send_json(self, 500, {"error": f"Token exchange gagal: {e.code} {body[:500]}"})
+                return
+            except Exception as e:
+                send_json(self, 500, {"error": f"Callback error: {e}"})
+                return
+
+        if path == "/api/auth/discord/me":
+            at = load_auth_tokens()
+            dt = at.get("discord") or {}
+            if not dt.get("access_token"):
+                send_json(self, 401, {"logged": False, "error": "Belum login Discord"})
+                return
+            send_json(self, 200, {"logged": True, "provider": "discord", "userinfo": dt.get("userinfo"), "scope": dt.get("scope")})
+            return
+
+        if path == "/api/auth/discord/logout":
+            with AUTH_LOCK:
+                at = load_auth_tokens()
+                at.pop("discord", None)
+                save_auth_tokens(at)
+            send_json(self, 200, {"ok": True, "msg": "Logged out Discord"})
+            return
+
+        if path == "/api/auth/config":
+            acfg = load_auth_config() or {}
+            at = load_auth_tokens()
+            send_json(self, 200, {
+                "google": {
+                    "configured": bool((acfg.get("google") or {}).get("client_id")),
+                    "has_token": bool((at.get("google") or {}).get("access_token")),
+                    "userinfo": (at.get("google") or {}).get("userinfo"),
+                },
+                "discord": {
+                    "configured": bool((acfg.get("discord") or {}).get("client_id")),
+                    "has_token": bool((at.get("discord") or {}).get("access_token")),
+                    "userinfo": (at.get("discord") or {}).get("userinfo"),
+                },
+            })
+            return
+
         # ── tmp persistence: list & file serve for reload ───────────────
         if path == "/api/tmp/list":
             ensure_dirs()
@@ -672,6 +1056,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if path == "/api/roblox/logout":
             save_roblox_tokens({})
             send_json(self, 200, {"ok": True, "msg": "Logged out"})
+            return
+
+        # ── Auth (Google/Discord): POST logout ───────────────────────────
+        if path in ("/api/auth/google/logout", "/api/auth/discord/logout"):
+            provider = "google" if "google" in path else "discord"
+            # AUTH_LOCK: mencegah race saat dua logout paralel — tanpa ini,
+            # load->pop->save yang saling menimpa bisa "menghidupkan" token lain.
+            with AUTH_LOCK:
+                at = load_auth_tokens()
+                at.pop(provider, None)
+                save_auth_tokens(at)
+            send_json(self, 200, {"ok": True, "msg": f"Logged out {provider}"})
             return
 
         # ── Roblox: POST /api/roblox/upload  → auto upload Audio ke Roblox ──
@@ -1170,6 +1566,24 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 pass
 
 
+class QuietHTTPServer(http.server.ThreadingHTTPServer):
+    # Klien (webview) bisa abort koneksi saat respons sedang dikirim;
+    # default handle_error mem-print traceback untuk error yang wajar ini.
+    def handle_error(self, request, client_address):
+        exc = sys.exception()
+        if isinstance(
+            exc,
+            (
+                ConnectionAbortedError,
+                ConnectionResetError,
+                BrokenPipeError,
+                TimeoutError,
+            ),
+        ):
+            return
+        super().handle_error(request, client_address)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8000)
@@ -1183,6 +1597,7 @@ def main():
 
     ensure_dirs()
     load_roblox_tokens()
+    load_auth_tokens()
     if FROZEN:
         threading.Thread(target=_parent_watchdog, daemon=True).start()
     # auto-port dari redirect_uri jika user tidak override --port
@@ -1213,6 +1628,16 @@ def main():
             print(f"[roblox] NOTE: redirect_uri custom — pastikan di dashboard Roblox persis sama!")
     else:
         print("[roblox] OAuth belum dikonfigurasi — buat roblox_config.json (lihat roblox_config.example.json)")
+    acfg = load_auth_config()
+    if acfg:
+        for prov in ("google", "discord"):
+            pc = acfg.get(prov) or {}
+            if pc.get("client_id"):
+                print(f"[auth:{prov}] OAuth configured — client_id {pc['client_id'][:8]}... redirect {pc.get('callback_url')}")
+            else:
+                print(f"[auth:{prov}] belum dikonfigurasi di auth_config.json")
+    else:
+        print("[auth] Google/Discord OAuth belum dikonfigurasi — buat auth_config.json")
     print(f"[dirs] tmp: {TMP_DIR}  audio: {AUDIO_DIR}")
 
     addr = (args.host, args.port)
@@ -1220,7 +1645,7 @@ def main():
     print("Endpoints: GET /api/health , POST /api/download {url} , POST /api/upload , POST /api/save")
     print("  - upload/youtube source -> tmp/   |   hasil konversi -> audio/")
     print("Tekan Ctrl+C untuk stop.")
-    httpd = http.server.ThreadingHTTPServer(addr, Handler)
+    httpd = QuietHTTPServer(addr, Handler)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

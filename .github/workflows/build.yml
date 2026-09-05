@@ -48,6 +48,16 @@ on:
   push:
     tags:
       - "v*"
+    paths:
+      - "src-tauri/Cargo.toml"
+      - "src-tauri/tauri.conf.json"
+      - "package.json"
+      - "src-tauri/**"
+      - "scripts/**"
+      - "js/**"
+      - "css/**"
+      - "index.html"
+      - "requirements.txt"
 
 # ============================================================
 # GLOBAL ENVIRONMENT
@@ -144,6 +154,7 @@ jobs:
             "requirements.txt"
             "scripts/build_sidecar.py"
             "src-tauri/tauri.conf.json"
+            "src-tauri/Cargo.toml"
           )
 
           for file in "${required_files[@]}"; do
@@ -154,6 +165,38 @@ jobs:
           done
 
           echo "Project structure OK."
+
+      # ======================================================
+      # SYNC VERSION FROM CARGO.TOML
+      # ======================================================
+
+      - name: Sync Version from Cargo.toml
+        id: cargo-version
+        shell: bash
+        run: |
+          set -e
+
+          # Read version from Cargo.toml (source of truth)
+          CARGO_VERSION=$(grep '^version' src-tauri/Cargo.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "Cargo.toml version: $CARGO_VERSION"
+
+          if [ -z "$CARGO_VERSION" ]; then
+            echo "::error::Could not read version from Cargo.toml"
+            exit 1
+          fi
+
+          # Sync to package.json
+          if [ -f "package.json" ]; then
+            python3 -c "import json, os; pkg = json.load(open('package.json', encoding='utf-8')); pkg['version'] = os.getenv('CARGO_VERSION'); json.dump(pkg, open('package.json', 'w', encoding='utf-8'), indent=2); open('package.json', 'a').write('\n'); print('package.json version synced')"
+          fi
+
+          # Sync to tauri.conf.json
+          if [ -f "src-tauri/tauri.conf.json" ]; then
+            python3 -c "import json, os; cfg = json.load(open('src-tauri/tauri.conf.json', encoding='utf-8')); cfg['version'] = os.getenv('CARGO_VERSION'); json.dump(cfg, open('src-tauri/tauri.conf.json', 'w', encoding='utf-8'), indent=2, ensure_ascii=False); open('src-tauri/tauri.conf.json', 'a').write('\n'); print('tauri.conf.json version synced')"
+          fi
+
+          echo "cargo_version=$CARGO_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version synced across all files: $CARGO_VERSION"
 
       # ======================================================
       # PYTHON
@@ -240,15 +283,9 @@ jobs:
         run: |
           set -e
 
-          RAW_VERSION="${VERSION:-}"
-          RAW_VERSION="$(echo "$RAW_VERSION" | xargs)"
-
-          # Tanpa input version -> ambil dari src-tauri/tauri.conf.json
-          if [ -z "$RAW_VERSION" ]; then
-            CONF_READ='import json;print(json.load(open("src-tauri/tauri.conf.json",encoding="utf-8"))["version"].strip())'
-            RAW_VERSION="$(python -c "$CONF_READ")"
-            echo "Versi dari src-tauri/tauri.conf.json : $RAW_VERSION"
-          fi
+          # Use Cargo.toml version as source of truth
+          RAW_VERSION="${{ steps.cargo-version.outputs.cargo_version }}"
+          echo "Using version from Cargo.toml: $RAW_VERSION"
 
           # Ensure version starts with v for release tag.
           if [[ "$RAW_VERSION" != v* ]]; then
@@ -286,45 +323,28 @@ jobs:
           fi
 
       # ======================================================
-      # UPDATE TAURI VERSION
+      # UPDATE TAURI VERSION (already synced)
       # ======================================================
 
-      - name: Update Tauri Version
+      - name: Verify Version Consistency
         shell: bash
         run: |
           set -e
 
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
+          CARGO_VERSION=$(grep '^version' src-tauri/Cargo.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          TAURI_VERSION=$(python3 -c "import json; print(json.load(open('src-tauri/tauri.conf.json',encoding='utf-8'))['version'].strip())")
+          PKG_VERSION=$(python3 -c "import json; print(json.load(open('package.json',encoding='utf-8'))['version'].strip())")
 
-          raw_version = os.getenv("VERSION", "").strip()
+          echo "Cargo.toml     : $CARGO_VERSION"
+          echo "tauri.conf.json: $TAURI_VERSION"
+          echo "package.json   : $PKG_VERSION"
 
-          if not raw_version:
-              print("Using version from tauri.conf.json")
-              raise SystemExit(0)
+          if [ "$CARGO_VERSION" != "$TAURI_VERSION" ] || [ "$CARGO_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Version mismatch detected!"
+            exit 1
+          fi
 
-          version = raw_version.lstrip("v")
-
-          path = Path("src-tauri/tauri.conf.json")
-
-          with path.open("r", encoding="utf-8") as f:
-              config = json.load(f)
-
-          config["version"] = version
-
-          with path.open("w", encoding="utf-8") as f:
-              json.dump(
-                  config,
-                  f,
-                  indent=2,
-                  ensure_ascii=False,
-              )
-              f.write("\n")
-
-          print(f"Tauri version updated to {version}")
-          PY
+          echo "All versions consistent: $CARGO_VERSION"
 
       # ======================================================
       # BUILD PYTHON SIDECAR
@@ -554,21 +574,20 @@ jobs:
         run: |
           set -e
 
-          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+          # Source of truth: Cargo.toml version
+          CARGO_VERSION=$(grep '^version' src-tauri/Cargo.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            # push tag takes priority
             TAG="${GITHUB_REF_NAME}"
-          else
+          elif [ -n "$(echo '${{ github.event.inputs.version }}' | xargs)" ]; then
+            # manual override
             TAG="${{ github.event.inputs.version }}"
-
-            # Tanpa input version -> ambil dari src-tauri/tauri.conf.json
-            if [ -z "$(echo "$TAG" | xargs)" ]; then
-              CONF_READ='import json;print(json.load(open("src-tauri/tauri.conf.json",encoding="utf-8"))["version"].strip())'
-              TAG="$(python3 -c "$CONF_READ")"
-              echo "Versi dari src-tauri/tauri.conf.json : $TAG"
-            fi
-
-            if [[ "$TAG" != v* ]]; then
-              TAG="v${TAG}"
-            fi
+            [[ "$TAG" != v* ]] && TAG="v${TAG}"
+          else
+            # auto: Cargo.toml version
+            TAG="v${CARGO_VERSION}"
+            echo "Versi dari src-tauri/Cargo.toml : $TAG"
           fi
 
           VERSION="${TAG#v}"

@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "src-tauri" / "dist"
-ITEMS = ["index.html", "css", "js"]
+ITEMS = ["index.html", "login.html", "css", "js"]
 
 def main() -> int:
     for item in ITEMS:

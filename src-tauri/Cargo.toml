@@ -1,8 +1,8 @@
 [package]
 name = "valency-studio-audio-converter"
-version = "1.1.0"
+version = "1.1.1"
 description = "Valency Studio | Audio Converter — batch konversi audio ke OGG Vorbis dengan trik sample-rate, plus upload ke Roblox"
-edition = "2021"
+edition = "2026"
 
 [lib]
 name = "valency_studio_audio_converter_lib"

@@ -6,7 +6,6 @@
   "build": {
     "frontendDist": "../src-tauri/dist",
     "devUrl": "http://127.0.0.1:1430",
-    "beforeDevCommand": "python scripts/dev_server.py",
     "beforeBuildCommand": "python scripts/sync_dist.py"
   },
   "app": {

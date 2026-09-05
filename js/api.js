@@ -124,10 +124,58 @@ App.api = (() => {
   const robloxOperation = (opId) => getJSON('/api/roblox/operations/' + encodeURIComponent(opId));
   const robloxAsset     = (assetId) => getJSON('/api/roblox/asset/' + encodeURIComponent(assetId));
 
+  // ── auth (Google/Discord) endpoints ──
+  const authConfig  = () => getJSON('/api/auth/config');
+  const googleMe    = () => getJSON('/api/auth/google/me').catch(e => ({ logged: false, error: e.message }));
+  const discordMe   = () => getJSON('/api/auth/discord/me').catch(e => ({ logged: false, error: e.message }));
+  const googleLogin = async () => {
+    const base = S().backendUrl + '/api/auth/google/login?json=1&desktop=1';
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (!invoke) { location.href = S().backendUrl + '/api/auth/google/login'; return; }
+    const r = await fetch(base, { cache: 'no-store', redirect: 'manual' });
+    const ct = r.headers.get('content-type') || '';
+    if (!r.ok || !ct.includes('application/json')) {
+      throw new Error('Backend belum mendukung login browser eksternal — tutup app, matikan proses valency-server lama lewat Task Manager, lalu jalankan ulang.');
+    }
+    const j = await r.json();
+    if (!j.url) throw new Error(j.error || 'URL login tidak diterima dari server');
+    await invoke('open_external', { url: j.url });
+  };
+  const discordLogin = async () => {
+    const base = S().backendUrl + '/api/auth/discord/login?json=1&desktop=1';
+    const invoke = window.__TAURI__?.core?.invoke;
+    if (!invoke) { location.href = S().backendUrl + '/api/auth/discord/login'; return; }
+    const r = await fetch(base, { cache: 'no-store', redirect: 'manual' });
+    const ct = r.headers.get('content-type') || '';
+    if (!r.ok || !ct.includes('application/json')) {
+      throw new Error('Backend belum mendukung login browser eksternal — tutup app, matikan proses valency-server lama lewat Task Manager, lalu jalankan ulang.');
+    }
+    const j = await r.json();
+    if (!j.url) throw new Error(j.error || 'URL login tidak diterima dari server');
+    await invoke('open_external', { url: j.url });
+  };
+  const googleLogout  = async () => {
+    try {
+      await fetch(S().backendUrl + '/api/auth/google/logout', { method: 'POST', cache: 'no-store' });
+    } catch (_) {}
+  };
+  const discordLogout = async () => {
+    try {
+      await fetch(S().backendUrl + '/api/auth/discord/logout', { method: 'POST', cache: 'no-store' });
+    } catch (_) {}
+  };
+  // Sekuensial, bukan Promise.all: dua POST logout paralel pernah memicu
+  // read-modify-write race di backend sampai AUTH_LOCK ditambahkan di server.py.
+  const logout = async () => {
+    await googleLogout();
+    await discordLogout();
+  };
+
   return {
     checkBackend, tmpList, tmpFile, tmpClear, tmpDelete, tmpRename, uploadTmp,
     saveAudio, downloadFromUrl, fetchRelative,
     robloxConfig, robloxMe, robloxDebug, robloxLogin, robloxLogout,
     robloxUpload, robloxOperation, robloxAsset,
+    authConfig, googleMe, discordMe, googleLogin, discordLogin, googleLogout, discordLogout, logout,
   };
 })();

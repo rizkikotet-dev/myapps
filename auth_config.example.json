@@ -1,0 +1,14 @@
+{
+  "google": {
+    "client_id": "578974801002-...apps.googleusercontent.com",
+    "client_secret": "GOCSPX-...your_secret...",
+    "callback_url": "http://localhost:55501/api/auth/callback/google",
+    "_comment": "Buat di https://console.cloud.google.com/apis/credentials → OAuth 2.0 Client IDs → Web application. Tambahkan redirect URI: http://localhost:55501/api/auth/callback/google"
+  },
+  "discord": {
+    "client_id": "123456789012345678",
+    "client_secret": "DtVPiEP...your_secret...QHJ_Ag",
+    "callback_url": "http://localhost:55501/api/auth/callback/discord",
+    "_comment": "Buat di https://discord.com/developers/applications → OAuth2 → Redirects: http://localhost:55501/api/auth/callback/discord → Scopes: identify, email"
+  }
+}

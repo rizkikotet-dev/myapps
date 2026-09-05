@@ -5,11 +5,15 @@
   "description": "Valency Studio | Audio Converter - Tauri v2 desktop app",
   "scripts": {
     "tauri": "tauri",
-    "dev": "tauri dev",
+    "dev": "concurrently \"python server.py --port 55501\" \"python scripts/dev_server.py\" \"tauri dev\"",
+    "dev:all": "python scripts/build_sidecar.py && concurrently \"python server.py --port 55501\" \"python scripts/dev_server.py\" \"tauri dev\"",
     "build": "tauri build",
-    "sidecar": "python scripts/build_sidecar.py"
+    "sidecar": "python scripts/build_sidecar.py",
+    "dev:frontend": "python scripts/dev_server.py",
+    "dev:backend": "python server.py --port 55501"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "concurrently": "^8"
   }
 }

@@ -143,6 +143,16 @@ window.App = window.App || {};
     const loginBtn = $('roblox-login-btn');
     if (loginBtn) loginBtn.addEventListener('click', () => window.robloxLogin());
 
+    // logout button (topbar)
+    const logoutBtn = $('logout-btn');
+    if (logoutBtn) logoutBtn.addEventListener('click', async () => {
+      await App.api.logout();
+      // give backend a moment to persist token deletion
+      await new Promise(r => setTimeout(r, 200));
+      // clear state and redirect to login page
+      location.replace('login.html');
+    });
+
     E.autoUploadCheck.addEventListener('change', () => App.files.updateConvButton());
   }
 

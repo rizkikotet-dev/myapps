@@ -9,6 +9,29 @@
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/app.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+(function() {
+  var p = new URLSearchParams(location.search);
+  var isCallback = p.get('auth') === 'connected' || p.get('auth') === 'error';
+  if (isCallback) return;
+  var candidates = ['http://127.0.0.1:55501','http://localhost:55501','http://127.0.0.1:8000','http://localhost:8000','http://127.0.0.1:55502','http://localhost:55502'];
+  (async function() {
+    for (var i = 0; i < candidates.length; i++) {
+      try {
+        var r = await fetch(candidates[i] + '/api/auth/config', { cache: 'no-store' });
+        var ct = r.headers.get('content-type') || '';
+        if (r.ok && ct.includes('application/json')) {
+          var cfg = await r.json();
+          var logged = (cfg.google && cfg.google.has_token) || (cfg.discord && cfg.discord.has_token);
+          if (!logged) location.replace('login.html');
+          return;
+        }
+      } catch (_) {}
+    }
+    location.replace('login.html');
+  })();
+})();
+</script>
 </head>
 <body>
 
@@ -25,6 +48,7 @@
   <div class="topbar-spacer"></div>
   <div class="topbar-actions">
     <button type="button" id="about-btn" class="btn-outline" onclick="App.nav.go('tentang')" aria-label="Tentang aplikasi" title="Tentang aplikasi"><i class="ti ti-info-circle"></i></button>
+    <button type="button" id="logout-btn" class="btn-outline" aria-label="Logout" title="Logout"><i class="ti ti-logout"></i></button>
   </div>
 </div>
 
@@ -102,9 +126,9 @@
           </div>
         </div>
 
-        <!-- akun roblox (dipindah dari halaman konversi) -->
+<!-- akun roblox (dipindah dari halaman konversi) -->
         <div class="panel-box dash-roblox">
-          <p class="clabel"><i class="ti ti-brand-roblox"></i> Akun Roblox <span class="backend-dot" id="dash-dot-roblox"></span> <span class="strip-note">login &amp; auto upload</span></p>
+          <p class="clabel"><i class="ti ti-brand-roblox"></i> Akun Roblox <span class="backend-dot" id="dash-dot-roblox"></span> <span class="strip-note">login & auto upload</span></p>
           <div id="roblox-logged-out">
             <button class="btn-outline" id="roblox-login-btn"><i class="ti ti-brand-roblox"></i> Login dengan Roblox</button>
             <p class="url-hint" id="roblox-config-hint" style="display:none"></p>

@@ -13,6 +13,7 @@ Standalone (tanpa tauri, mis. cek cepat di browser biasa):
 """
 import argparse
 import mimetypes
+import sys
 import threading
 import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -73,6 +74,25 @@ def watch(interval=0.3):
         except Exception as e:
             print(f"[dev-server] watcher error: {e!r}")
         time.sleep(interval)
+
+
+class QuietHTTPServer(ThreadingHTTPServer):
+    # Klien webview sering abort koneksi di tengah request (mis. reload
+    # memutus SSE). Default handle_error mem-print traceback penuh utk
+    # error yang memang wajar ini -> hanya laporkan error tak terduga.
+    def handle_error(self, request, client_address):
+        exc = sys.exception()
+        if isinstance(
+            exc,
+            (
+                ConnectionAbortedError,
+                ConnectionResetError,
+                BrokenPipeError,
+                TimeoutError,
+            ),
+        ):
+            return
+        super().handle_error(request, client_address)
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -153,7 +173,7 @@ def main():
     args = ap.parse_args()
 
     threading.Thread(target=watch, daemon=True).start()
-    srv = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    srv = QuietHTTPServer(("127.0.0.1", args.port), Handler)
     print(f"[dev-server] http://127.0.0.1:{args.port}  (root={ROOT})")
     print("[dev-server] live-reload aktif: index.html, css/, js/")
     srv.serve_forever()

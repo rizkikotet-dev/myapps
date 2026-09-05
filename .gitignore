@@ -1,6 +1,9 @@
 # kredensial — JANGAN pernah commit
 roblox_config.json
 roblox_tokens.json
+auth_config.json
+auth_tokens.json
+secret_login.txt
 
 node_modules/
 package-lock.json.bak

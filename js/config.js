@@ -4,9 +4,13 @@
 window.App = window.App || {};
 
 App.CONFIG = {
-  // Backend candidates: same-origin first (kecuali file://), lalu port umum + port redirect
+  // Backend candidates — URUSAN WAJIB SAMA dengan gate inline di index.html
+  // dan BACKEND_CANDIDATES di login.html: 55501 (server.py dev, data repo)
+  // sebelum 55502 (sidecar Tauri, data appdata). Kalau urutannya beda, gate
+  // bisa membaca token dari server lain daripada yang dipakai runtime
+  // (logout di 55502, gate baca 55501 → logout terasa tidak berfungsi).
   getCandidates() {
-    const local = ['http://127.0.0.1:8000', 'http://localhost:8000', 'http://127.0.0.1:55502', 'http://localhost:55502'];
+    const local = ['http://127.0.0.1:55501', 'http://localhost:55501', 'http://127.0.0.1:8000', 'http://localhost:8000', 'http://127.0.0.1:55502', 'http://localhost:55502'];
     const same = '';
     if (location.protocol === 'file:') return [...local, same];
     return [same, ...local];

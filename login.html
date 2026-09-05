@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Valency Studio | Audio Converter</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f2a33c'/%3E%3Cpath d='M4 16 Q 7.5 7 11 16 T 18 16 T 25 16 T 31 16' stroke='%23211503' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); display: flex; align-items: center; justify-content: center; }
+    
+    .login-container { width: 100%; max-width: 420px; padding: 20px; }
+    .login-box {
+      background: #242424; border: 1px solid #3a3a3a; border-radius: 12px; padding: 40px 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    .login-header {
+      text-align: center; margin-bottom: 40px;
+    }
+    .login-brand {
+      font-size: 48px; margin-bottom: 16px; color: #f2a33c;
+    }
+    .login-title {
+      font-size: 24px; font-weight: 600; color: #fff; margin-bottom: 8px;
+    }
+    .login-subtitle {
+      font-size: 14px; color: #999;
+    }
+    
+    .login-buttons {
+      display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;
+    }
+    .login-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 12px 16px; border: 1px solid #3a3a3a; border-radius: 8px; background: #2d2d2d;
+      color: #fff; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+      text-decoration: none;
+    }
+    .login-btn:hover {
+      background: #353535; border-color: #4a4a4a;
+    }
+    .login-btn i { font-size: 18px; }
+    
+    .login-btn.google { border-color: #4285f4; }
+    .login-btn.google:hover { background: rgba(66, 133, 244, 0.1); }
+    
+    .login-btn.discord { border-color: #5865f2; }
+    .login-btn.discord:hover { background: rgba(88, 101, 242, 0.1); }
+    
+    .login-divider {
+      text-align: center; margin: 24px 0; color: #666; font-size: 12px;
+      position: relative;
+    }
+    .login-divider::before {
+      content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #3a3a3a;
+    }
+    .login-divider span { position: relative; background: #242424; padding: 0 8px; }
+    
+    .login-info {
+      background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 8px; padding: 16px;
+      font-size: 12px; color: #999; line-height: 1.6;
+    }
+    
+    .login-loader { text-align: center; display: none; }
+    .login-loader.show { display: block; }
+    .spinner { width: 32px; height: 32px; border: 3px solid #3a3a3a; border-top-color: #f2a33c; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .login-error {
+      background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5;
+      border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 12px; display: none;
+    }
+    .login-error.show { display: block; }
+    
+    @media (max-width: 480px) {
+      .login-box { padding: 30px 20px; }
+      .login-title { font-size: 20px; }
+      .login-brand { font-size: 36px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <div class="login-header">
+        <div class="login-brand"><i class="ti ti-wave-sine"></i></div>
+        <div class="login-title">Valency Studio</div>
+        <div class="login-subtitle">Audio Converter</div>
+      </div>
+      
+      <div class="login-error" id="login-error"></div>
+      
+      <div class="login-buttons">
+        <button class="login-btn google" id="google-login-btn" onclick="handleGoogleLogin()">
+          <i class="ti ti-brand-google"></i>
+          <span>Login dengan Google</span>
+        </button>
+        <button class="login-btn discord" id="discord-login-btn" onclick="handleDiscordLogin()">
+          <i class="ti ti-brand-discord"></i>
+          <span>Login dengan Discord</span>
+        </button>
+      </div>
+      
+      <div class="login-divider"><span>atau</span></div>
+      
+      <div class="login-loader" id="login-loader">
+        <div class="spinner"></div>
+        <p>Membuka halaman login...</p>
+      </div>
+      
+      <div class="login-info">
+        <strong>Tentang Login:</strong><br>
+        Kami menggunakan OAuth2 dari Google dan Discord untuk keamanan data Anda. Informasi login Anda tidak disimpan di server kami.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Backend detection — same candidates as config.js
+    var BACKEND_CANDIDATES = [
+      'http://127.0.0.1:55501',
+      'http://localhost:55501',
+      'http://127.0.0.1:8000',
+      'http://localhost:8000',
+      'http://127.0.0.1:55502',
+      'http://localhost:55502',
+    ];
+
+    function apiUrl(path) { return (window._backendBase || '') + path; }
+
+    async function detectBackend() {
+      for (var i = 0; i < BACKEND_CANDIDATES.length; i++) {
+        var base = BACKEND_CANDIDATES[i];
+        try {
+          var r = await fetch(base + '/api/auth/config', { cache: 'no-store' });
+          var ct = r.headers.get('content-type') || '';
+          if (r.ok && ct.includes('application/json')) { window._backendBase = base; return true; }
+        } catch (_) {}
+      }
+      // same-origin fallback
+      try {
+        var r = await fetch('/api/auth/config', { cache: 'no-store' });
+        var ct = r.headers.get('content-type') || '';
+        if (r.ok && ct.includes('application/json')) { window._backendBase = ''; return true; }
+      } catch (_) {}
+      return false;
+    }
+
+    async function checkAuthStatus() {
+      try {
+        var response = await fetch(apiUrl('/api/auth/config'), { cache: 'no-store' });
+        var ct = response.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) return;
+        var config = await response.json();
+        if ((config.google && config.google.has_token) || (config.discord && config.discord.has_token)) {
+          window.location.href = 'index.html';
+          return;
+        }
+      } catch (e) {
+        console.error('Auth check failed:', e);
+      }
+    }
+
+    async function handleGoogleLogin() {
+      try {
+        showLoader(true);
+        var isDesktop = !!(window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke);
+        var url = apiUrl('/api/auth/google/login?json=1' + (isDesktop ? '&desktop=1' : ''));
+        var response = await fetch(url, { cache: 'no-store' });
+        var ct = response.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          showError('Backend tidak merespons JSON. Pastikan server Python berjalan: python server.py --port 55501');
+          return;
+        }
+        var data = await response.json();
+        if (data.url) {
+          if (isDesktop) {
+            await window.__TAURI__.core.invoke('open_external', { url: data.url });
+            pollAuthStatus('google', 120000);
+          } else {
+            window.location.href = data.url;
+          }
+        } else {
+          showError('Login Google gagal: ' + (data.error || 'URL kosong'));
+        }
+      } catch (error) {
+        showError('Gagal login Google: ' + error.message);
+      }
+    }
+
+    async function handleDiscordLogin() {
+      try {
+        showLoader(true);
+        var isDesktop = !!(window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke);
+        var url = apiUrl('/api/auth/discord/login?json=1' + (isDesktop ? '&desktop=1' : ''));
+        var response = await fetch(url, { cache: 'no-store' });
+        var ct = response.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          showError('Backend tidak merespons JSON. Pastikan server Python berjalan: python server.py --port 55501');
+          return;
+        }
+        var data = await response.json();
+        if (data.url) {
+          if (isDesktop) {
+            await window.__TAURI__.core.invoke('open_external', { url: data.url });
+            pollAuthStatus('discord', 120000);
+          } else {
+            window.location.href = data.url;
+          }
+        } else {
+          showError('Login Discord gagal: ' + (data.error || 'URL kosong'));
+        }
+      } catch (error) {
+        showError('Gagal login Discord: ' + error.message);
+      }
+    }
+
+    async function pollAuthStatus(provider, timeout) {
+      var startTime = Date.now();
+      var endpoint = provider === 'google' ? '/api/auth/google/me' : '/api/auth/discord/me';
+      var poll = async function() {
+        try {
+          var response = await fetch(apiUrl(endpoint), { cache: 'no-store' });
+          var ct = response.headers.get('content-type') || '';
+          if (ct.includes('application/json')) {
+            var data = await response.json();
+            if (data.logged) { showLoader(false); window.location.href = 'index.html'; return; }
+          }
+        } catch (e) { console.error('Poll error:', e); }
+        if (Date.now() - startTime < timeout) {
+          setTimeout(poll, 3000);
+        } else {
+          showLoader(false);
+          showError('Login timeout. Silakan coba lagi.');
+        }
+      };
+      poll();
+    }
+
+    function showLoader(show) {
+      var loader = document.getElementById('login-loader');
+      var buttons = document.querySelectorAll('.login-btn');
+      if (show) { loader.classList.add('show'); buttons.forEach(function(b) { b.disabled = true; }); }
+      else { loader.classList.remove('show'); buttons.forEach(function(b) { b.disabled = false; }); }
+    }
+
+    function showError(message) {
+      var errorEl = document.getElementById('login-error');
+      errorEl.textContent = message;
+      errorEl.classList.add('show');
+      showLoader(false);
+    }
+
+    (async function boot() {
+      var ok = await detectBackend();
+      if (!ok) {
+        showError('Backend tidak ditemukan. Jalankan: python server.py --port 55501');
+        return;
+      }
+      var params = new URLSearchParams(location.search);
+      if (params.get('auth') === 'connected') {
+        window.location.href = 'index.html';
+        return;
+      }
+      if (params.get('auth') === 'error') {
+        showError('Login gagal: ' + (params.get('msg') || 'Provider error'));
+        return;
+      }
+      await checkAuthStatus();
+    })();
+  </script>
+</body>
+</html>
